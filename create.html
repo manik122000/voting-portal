@@ -9,16 +9,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    /* Wider class input and tag area */
-    #newClass {
-      flex: 1;
-      min-width: 0;
-    }
-    #classes-tags {
-      gap: 6px;
-    }
     .class-tag {
       white-space: nowrap;
+      margin-bottom: 4px;
     }
   </style>
 </head>
@@ -38,7 +31,6 @@
         <input type="text" id="postName" class="form-input" 
                placeholder="e.g., School Captain, Class Representative"
                required maxlength="100">
-        <span class="form-hint">The position for which election is being held</span>
       </div>
 
       <!-- Registration Toggle -->
@@ -50,7 +42,7 @@
         <span class="form-hint" style="margin-left: 28px;">If disabled, anyone can vote without identification (no double‑vote prevention).</span>
       </div>
 
-      <!-- Allowed Classes (visible only if registration is on) -->
+      <!-- Allowed Classes -->
       <div id="classes-section">
         <div class="form-group">
           <label class="form-label">
@@ -120,261 +112,264 @@
   <script src="notifications.js"></script>
   <script src="theme.js"></script>
   <script>
-    let candidateCount = 0;
-    let classList = [];
-    const MAX_CANDIDATES = 10;
-    const MIN_CANDIDATES = 2;
+    // Wait until DOM is fully ready
+    document.addEventListener('DOMContentLoaded', () => {
+      let candidateCount = 0;
+      let classList = [];
+      const MAX_CANDIDATES = 10;
+      const MIN_CANDIDATES = 2;
 
-    function toggleRegistration() {
-      const checked = document.getElementById('registrationToggle').checked;
-      const section = document.getElementById('classes-section');
-      section.style.display = checked ? 'block' : 'none';
-      if (!checked) {
-        classList = [];
+      function toggleRegistration() {
+        const checked = document.getElementById('registrationToggle').checked;
+        document.getElementById('classes-section').style.display = checked ? 'block' : 'none';
+        if (!checked) {
+          classList = [];
+          renderClassTags();
+        }
+      }
+
+      function addClass() {
+        const input = document.getElementById('newClass');
+        const className = input.value.trim();
+        if (!className) {
+          notifications.warning('Please enter a class name');
+          return;
+        }
+        if (classList.includes(className)) {
+          notifications.warning('This class already exists');
+          return;
+        }
+        classList.push(className);
+        input.value = '';
+        renderClassTags();
+        input.focus();
+      }
+
+      function removeClass(className) {
+        classList = classList.filter(c => c !== className);
         renderClassTags();
       }
-    }
 
-    function addClass() {
-      const input = document.getElementById('newClass');
-      const className = input.value.trim();
-      if (!className) {
-        notifications.warning('Please enter a class name');
-        return;
+      function renderClassTags() {
+        const container = document.getElementById('classes-tags');
+        container.innerHTML = classList.map(c => `
+          <span class="class-tag" style="display: inline-flex; align-items: center; gap: 4px; 
+                       background: var(--primary); color: white; padding: 6px 12px; 
+                       border-radius: var(--radius-full); font-size: 0.875rem;">
+            ${c}
+            <button type="button" onclick="removeClass('${c}')" 
+                    style="background: none; border: none; color: white; cursor: pointer; padding: 0; font-size:1rem;">
+              ✕
+            </button>
+          </span>
+        `).join('');
+        document.getElementById('allowedClasses').value = classList.join(',');
       }
-      if (classList.includes(className)) {
-        notifications.warning('This class already exists');
-        return;
-      }
-      classList.push(className);
-      input.value = '';
-      renderClassTags();
-      input.focus();
-    }
 
-    function removeClass(className) {
-      classList = classList.filter(c => c !== className);
-      renderClassTags();
-    }
-
-    function renderClassTags() {
-      const container = document.getElementById('classes-tags');
-      container.innerHTML = classList.map(c => `
-        <span class="class-tag" style="display: inline-flex; align-items: center; gap: 4px; 
-                     background: var(--primary); color: white; padding: 6px 12px; 
-                     border-radius: var(--radius-full); font-size: 0.875rem;">
-          ${c}
-          <button type="button" onclick="removeClass('${c}')" 
-                  style="background: none; border: none; color: white; cursor: pointer; padding: 0; font-size:1rem;">
-            ✕
-          </button>
-        </span>
-      `).join('');
-      document.getElementById('allowedClasses').value = classList.join(',');
-    }
-
-    function addCandidate() {
-      if (candidateCount >= MAX_CANDIDATES) {
-        notifications.warning(`Maximum ${MAX_CANDIDATES} candidates allowed`);
-        return;
-      }
-      candidateCount++;
-      const container = document.getElementById('candidates-container');
-      const candidateId = Utils.generateId();
-      const card = document.createElement('div');
-      card.className = 'card';
-      card.id = `candidate-${candidateId}`;
-      card.style.animation = 'slideUp 0.3s ease';
-      card.innerHTML = `
-        <div class="card-header">
-          <h4>Candidate #${candidateCount}</h4>
-          <button type="button" class="btn btn-danger btn-sm" 
-                  onclick="removeCandidate('${candidateId}')">🗑️ Remove</button>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Name *</label>
-          <input type="text" class="form-input candidate-name" 
-                 placeholder="Enter full name" required maxlength="50">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Class *</label>
-          <input type="text" class="form-input candidate-class" 
-                 placeholder="e.g., 10A" required maxlength="10">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Photo *</label>
-          <input type="file" class="form-input candidate-photo-input" 
-                 accept="image/*" required>
-          <div class="photo-preview" style="margin-top: var(--spacing-sm);"></div>
-        </div>
-      `;
-      container.appendChild(card);
-      const photoInput = card.querySelector('.candidate-photo-input');
-      photoInput.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (file) {
-          const reader = new FileReader();
-          reader.onload = (event) => {
-            card.querySelector('.photo-preview').innerHTML = `
-              <img src="${event.target.result}" 
-                   style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid var(--primary-light);">
-            `;
-          };
-          reader.readAsDataURL(file);
+      function addCandidate() {
+        if (candidateCount >= MAX_CANDIDATES) {
+          notifications.warning(`Maximum ${MAX_CANDIDATES} candidates allowed`);
+          return;
         }
-      });
-      updateCandidateCount();
-      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-
-    function removeCandidate(candidateId) {
-      if (candidateCount <= MIN_CANDIDATES) {
-        notifications.warning(`Minimum ${MIN_CANDIDATES} candidates required`);
-        return;
-      }
-      const card = document.getElementById(`candidate-${candidateId}`);
-      if (card) {
-        card.style.animation = 'fadeOut 0.3s ease';
-        setTimeout(() => {
-          card.remove();
-          candidateCount--;
-          updateCandidateCount();
-          renumberCandidates();
-        }, 300);
-      }
-    }
-
-    function renumberCandidates() {
-      const cards = document.querySelectorAll('#candidates-container .card');
-      cards.forEach((card, index) => {
-        card.querySelector('h4').textContent = `Candidate #${index + 1}`;
-      });
-    }
-
-    function updateCandidateCount() {
-      document.getElementById('candidate-count').textContent = `${candidateCount}/${MAX_CANDIDATES}`;
-      document.getElementById('add-candidate-btn').disabled = candidateCount >= MAX_CANDIDATES;
-    }
-
-    // Live password matching
-    document.getElementById('confirmPassword').addEventListener('input', function() {
-      const password = document.getElementById('masterPassword').value;
-      const hint = document.getElementById('password-match');
-      if (this.value === '') {
-        hint.style.display = 'none';
-      } else if (this.value === password) {
-        hint.style.display = 'block';
-        hint.style.color = 'var(--success)';
-        hint.textContent = '✓ Passwords match';
-      } else {
-        hint.style.display = 'block';
-        hint.style.color = 'var(--danger)';
-        hint.textContent = '✕ Passwords do not match';
-      }
-    });
-
-    // Form submission
-    document.getElementById('create-poll-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      
-      const postName = document.getElementById('postName').value.trim();
-      if (!postName) {
-        notifications.error('Please enter post name');
-        return;
-      }
-      
-      const registrationRequired = document.getElementById('registrationToggle').checked;
-      
-      if (registrationRequired && classList.length === 0) {
-        notifications.error('Please add at least one class (or disable registration)');
-        return;
-      }
-      
-      const candidateCards = document.querySelectorAll('#candidates-container .card');
-      if (candidateCards.length < MIN_CANDIDATES) {
-        notifications.error(`Minimum ${MIN_CANDIDATES} candidates required`);
-        return;
-      }
-      
-      const masterPassword = document.getElementById('masterPassword').value;
-      const confirmPassword = document.getElementById('confirmPassword').value;
-      if (masterPassword.length < 4) {
-        notifications.error('Password must be at least 4 characters');
-        return;
-      }
-      if (masterPassword !== confirmPassword) {
-        notifications.error('Passwords do not match');
-        return;
-      }
-      
-      const submitBtn = e.target.querySelector('button[type="submit"]');
-      const originalText = submitBtn.textContent;
-      submitBtn.textContent = 'Creating...';
-      submitBtn.disabled = true;
-      
-      try {
-        const candidates = [];
-        for (const card of candidateCards) {
-          const name = card.querySelector('.candidate-name').value.trim();
-          const className = card.querySelector('.candidate-class').value.trim();
-          const photoFile = card.querySelector('.candidate-photo-input').files[0];
-          if (!name || !className || !photoFile) {
-            notifications.error('All candidate fields are required');
-            submitBtn.textContent = originalText;
-            submitBtn.disabled = false;
-            return;
+        candidateCount++;
+        const container = document.getElementById('candidates-container');
+        const candidateId = Utils.generateId();
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.id = `candidate-${candidateId}`;
+        card.style.animation = 'slideUp 0.3s ease';
+        card.innerHTML = `
+          <div class="card-header">
+            <h4>Candidate #${candidateCount}</h4>
+            <button type="button" class="btn btn-danger btn-sm" 
+                    onclick="removeCandidate('${candidateId}')">🗑️ Remove</button>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Name *</label>
+            <input type="text" class="form-input candidate-name" 
+                   placeholder="Enter full name" required maxlength="50">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Class *</label>
+            <input type="text" class="form-input candidate-class" 
+                   placeholder="e.g., 10A" required maxlength="10">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Photo *</label>
+            <input type="file" class="form-input candidate-photo-input" 
+                   accept="image/*" required>
+            <div class="photo-preview" style="margin-top: var(--spacing-sm);"></div>
+          </div>
+        `;
+        container.appendChild(card);
+        // Photo preview
+        const photoInput = card.querySelector('.candidate-photo-input');
+        photoInput.addEventListener('change', (e) => {
+          const file = e.target.files[0];
+          if (file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+              card.querySelector('.photo-preview').innerHTML = `
+                <img src="${event.target.result}" 
+                     style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid var(--primary-light);">
+              `;
+            };
+            reader.readAsDataURL(file);
           }
-          const photoDataUrl = await Utils.compressImage(photoFile, 200, 200, 0.7);
-          candidates.push({
-            id: Utils.generateId(),
-            name,
-            class: className,
-            photo: photoDataUrl,
-            votes: 0
-          });
+        });
+        updateCandidateCount();
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+
+      window.removeCandidate = function(candidateId) {
+        if (candidateCount <= MIN_CANDIDATES) {
+          notifications.warning(`Minimum ${MIN_CANDIDATES} candidates required`);
+          return;
+        }
+        const card = document.getElementById(`candidate-${candidateId}`);
+        if (card) {
+          card.style.animation = 'fadeOut 0.3s ease';
+          setTimeout(() => {
+            card.remove();
+            candidateCount--;
+            updateCandidateCount();
+            renumberCandidates();
+          }, 300);
+        }
+      };
+
+      function renumberCandidates() {
+        const cards = document.querySelectorAll('#candidates-container .card');
+        cards.forEach((card, index) => {
+          card.querySelector('h4').textContent = `Candidate #${index + 1}`;
+        });
+      }
+
+      function updateCandidateCount() {
+        document.getElementById('candidate-count').textContent = `${candidateCount}/${MAX_CANDIDATES}`;
+        document.getElementById('add-candidate-btn').disabled = candidateCount >= MAX_CANDIDATES;
+      }
+
+      // Live password matching
+      document.getElementById('confirmPassword').addEventListener('input', function() {
+        const password = document.getElementById('masterPassword').value;
+        const hint = document.getElementById('password-match');
+        if (this.value === '') {
+          hint.style.display = 'none';
+        } else if (this.value === password) {
+          hint.style.display = 'block';
+          hint.style.color = 'var(--success)';
+          hint.textContent = '✓ Passwords match';
+        } else {
+          hint.style.display = 'block';
+          hint.style.color = 'var(--danger)';
+          hint.textContent = '✕ Passwords do not match';
+        }
+      });
+
+      // Form submission
+      document.getElementById('create-poll-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const postName = document.getElementById('postName').value.trim();
+        if (!postName) { notifications.error('Please enter post name'); return; }
+        
+        const registrationRequired = document.getElementById('registrationToggle').checked;
+        if (registrationRequired && classList.length === 0) {
+          notifications.error('Please add at least one class (or disable registration)');
+          return;
         }
         
-        const passwordHash = await cryptoManager.hashPassword(masterPassword);
+        const candidateCards = document.querySelectorAll('#candidates-container .card');
+        if (candidateCards.length < MIN_CANDIDATES) {
+          notifications.error(`Minimum ${MIN_CANDIDATES} candidates required`);
+          return;
+        }
         
-        const poll = {
-          id: Utils.generateId(),
-          postName,
-          candidates,
-          allowedClasses: registrationRequired ? classList : [],
-          registrationRequired,
-          masterPasswordHash: passwordHash,
-          status: 'pending',
-          votedCombos: [],
-          createdAt: Date.now(),
-          startedAt: null,
-          endedAt: null
-        };
+        const masterPassword = document.getElementById('masterPassword').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+        if (masterPassword.length < 4) {
+          notifications.error('Password must be at least 4 characters');
+          return;
+        }
+        if (masterPassword !== confirmPassword) {
+          notifications.error('Passwords do not match');
+          return;
+        }
         
-        await db.savePoll(poll);
-        notifications.success('Poll created successfully!');
-        Utils.playSound('success');
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        const originalText = submitBtn.textContent;
+        submitBtn.textContent = 'Creating...';
+        submitBtn.disabled = true;
         
-        setTimeout(() => window.location.href = 'index.html', 500);
-      } catch (error) {
-        console.error('Error creating poll:', error);
-        notifications.error('Failed to create poll');
-        submitBtn.textContent = originalText;
-        submitBtn.disabled = false;
-      }
-    });
+        try {
+          const candidates = [];
+          for (const card of candidateCards) {
+            const name = card.querySelector('.candidate-name').value.trim();
+            const className = card.querySelector('.candidate-class').value.trim();
+            const photoFile = card.querySelector('.candidate-photo-input').files[0];
+            if (!name || !className || !photoFile) {
+              notifications.error('All candidate fields are required');
+              submitBtn.textContent = originalText;
+              submitBtn.disabled = false;
+              return;
+            }
+            const photoDataUrl = await Utils.compressImage(photoFile, 200, 200, 0.7);
+            candidates.push({
+              id: Utils.generateId(),
+              name,
+              class: className,
+              photo: photoDataUrl,
+              votes: 0
+            });
+          }
+          
+          const passwordHash = await cryptoManager.hashPassword(masterPassword);
+          const poll = {
+            id: Utils.generateId(),
+            postName,
+            candidates,
+            allowedClasses: registrationRequired ? classList : [],
+            registrationRequired,
+            masterPasswordHash: passwordHash,
+            status: 'pending',
+            votedCombos: [],
+            createdAt: Date.now(),
+            startedAt: null,
+            endedAt: null
+          };
+          
+          await db.savePoll(poll);
+          notifications.success('Poll created successfully!');
+          Utils.playSound('success');
+          setTimeout(() => window.location.href = 'index.html', 500);
+        } catch (error) {
+          console.error('Error creating poll:', error);
+          notifications.error('Failed to create poll');
+          submitBtn.textContent = originalText;
+          submitBtn.disabled = false;
+        }
+      });
 
-    // Enter key to add class
-    document.getElementById('newClass').addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        addClass();
-      }
-    });
+      // Enter key to add class
+      document.getElementById('newClass').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          addClass();
+        }
+      });
 
-    // Initialise
-    addCandidate();
-    addCandidate();
-    toggleRegistration(); // show/hide accordingly
+      // Expose functions that are called from inline event handlers
+      window.addClass = addClass;
+      window.toggleRegistration = toggleRegistration;
+      window.removeClass = removeClass;
+      window.addCandidate = addCandidate;   // <-- crucial for the button onclick
+      
+      // Initialise with two candidates and correct class visibility
+      toggleRegistration();
+      addCandidate();
+      addCandidate();
+    });
   </script>
 </body>
 </html>

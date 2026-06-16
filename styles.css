@@ -685,4 +685,23 @@ p {
   outline: 3px solid var(--primary);
   outline-offset: 2px;
 }
+/* Wider class input in create form (already handled inline, but ensure flexibility) */
+.form-input {
+  width: 100%;
+}
 
+/* Roll number input – hide spinners */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Better tag wrapping */
+.class-tag {
+  white-space: nowrap;
+  margin-bottom: 4px;
+}

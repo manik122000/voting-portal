@@ -8,86 +8,118 @@
   <link rel="stylesheet" href="styles.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    .class-input-group {
+      display: flex;
+      gap: var(--spacing-sm);
+      align-items: center;
+    }
+    .class-input-group input {
+      flex: 1;
+      min-width: 200px;
+    }
+    .toggle-container {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      margin: var(--spacing-md) 0;
+    }
+    .toggle-switch {
+      position: relative;
+      width: 50px;
+      height: 28px;
+      background: var(--gray-300);
+      border-radius: 14px;
+      cursor: pointer;
+      transition: background var(--transition-fast);
+    }
+    .toggle-switch.active {
+      background: var(--primary);
+    }
+    .toggle-switch::after {
+      content: '';
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      background: white;
+      border-radius: 50%;
+      top: 2px;
+      left: 2px;
+      transition: transform var(--transition-fast);
+    }
+    .toggle-switch.active::after {
+      transform: translateX(22px);
+    }
+  </style>
 </head>
 <body>
   <div class="app-container">
     <header style="display: flex; align-items: center; gap: var(--spacing-md); margin-bottom: var(--spacing-xl);">
-      <a href="index.html" class="btn btn-outline btn-icon" title="Back">
-        ←
-      </a>
+      <a href="index.html" class="btn btn-outline btn-icon">←</a>
       <h1 style="margin: 0;">Create New Poll</h1>
     </header>
 
     <form id="create-poll-form" class="glass-panel" autocomplete="off">
       <!-- Post Name -->
       <div class="form-group">
-        <label class="form-label" for="postName">
-          Post Name <span style="color: var(--danger);">*</span>
-        </label>
-        <input type="text" id="postName" class="form-input" 
-               placeholder="e.g., School Captain, Class Representative"
-               required maxlength="100">
-        <span class="form-hint">The position for which election is being held</span>
+        <label class="form-label" for="postName">Post Name *</label>
+        <input type="text" id="postName" class="form-input" placeholder="e.g., School Captain" required maxlength="100">
       </div>
 
-      <!-- Allowed Classes -->
+      <!-- Voter Registration Toggle -->
       <div class="form-group">
-        <label class="form-label" for="allowedClasses">
-          Allowed Voter Classes <span style="color: var(--danger);">*</span>
-        </label>
-        <div style="display: flex; gap: var(--spacing-sm);">
-          <input type="text" id="newClass" class="form-input" 
-                 placeholder="Add class (e.g., 10A)">
-          <button type="button" class="btn btn-outline" onclick="addClass()">Add</button>
+        <label class="form-label">Voter Registration</label>
+        <div class="toggle-container">
+          <div id="registration-toggle" class="toggle-switch" onclick="toggleRegistration()"></div>
+          <span id="registration-label">Disabled</span>
         </div>
-        <div id="classes-tags" style="display: flex; flex-wrap: wrap; gap: var(--spacing-sm); margin-top: var(--spacing-sm);"></div>
-        <input type="hidden" id="allowedClasses" required>
-        <span class="form-hint">At least one class is required</span>
+        <span class="form-hint">If enabled, voters must enter roll number and class before voting</span>
+      </div>
+
+      <!-- Allowed Classes (only if registration enabled) -->
+      <div id="classes-section" style="display: none;">
+        <div class="form-group">
+          <label class="form-label" for="newClass">Allowed Voter Classes *</label>
+          <div class="class-input-group">
+            <input type="text" id="newClass" class="form-input" placeholder="e.g., 10A, 10B" style="flex:1;">
+            <button type="button" class="btn btn-outline" onclick="addClass()">Add</button>
+          </div>
+          <div id="classes-tags" style="display: flex; flex-wrap: wrap; gap: var(--spacing-sm); margin-top: var(--spacing-sm);"></div>
+          <input type="hidden" id="allowedClasses">
+          <span class="form-hint">At least one class is required when registration is enabled</span>
+        </div>
       </div>
 
       <!-- Candidates Section -->
       <div style="margin: var(--spacing-xl) 0;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
-          <h3 style="margin: 0;">Candidates</h3>
+          <h3 style="margin:0;">Candidates</h3>
           <span class="badge badge-active" id="candidate-count">2/10</span>
         </div>
-        <p style="color: var(--text-secondary); font-size: 0.875rem;">
-          Minimum 2, maximum 10 candidates
-        </p>
+        <p style="color: var(--text-secondary); font-size: 0.875rem;">Min 2, max 10 candidates</p>
       </div>
 
       <div id="candidates-container"></div>
 
-      <button type="button" id="add-candidate-btn" class="btn btn-outline btn-block" style="margin-bottom: var(--spacing-xl);">
-        ➕ Add Candidate
-      </button>
+      <button type="button" id="add-candidate-btn" class="btn btn-outline btn-block" style="margin-bottom: var(--spacing-xl);">➕ Add Candidate</button>
 
-      <!-- Password Section -->
+      <!-- Password -->
       <div style="border-top: 2px solid var(--border-color); padding-top: var(--spacing-xl);">
         <h3>🔐 Security</h3>
         <div class="form-group">
-          <label class="form-label" for="masterPassword">
-            Master Password <span style="color: var(--danger);">*</span>
-          </label>
-          <input type="password" id="masterPassword" class="form-input" 
-                 placeholder="Create a strong password" required minlength="4">
+          <label class="form-label" for="masterPassword">Master Password *</label>
+          <input type="password" id="masterPassword" class="form-input" placeholder="Create a strong password" required minlength="4">
         </div>
         <div class="form-group">
-          <label class="form-label" for="confirmPassword">
-            Confirm Password <span style="color: var(--danger);">*</span>
-          </label>
-          <input type="password" id="confirmPassword" class="form-input" 
-                 placeholder="Re-enter password" required>
-          <span class="form-hint" id="password-match" style="display: none;"></span>
+          <label class="form-label" for="confirmPassword">Confirm Password *</label>
+          <input type="password" id="confirmPassword" class="form-input" placeholder="Re-enter password" required>
+          <span class="form-hint" id="password-match" style="display:none;"></span>
         </div>
       </div>
 
-      <!-- Action Buttons -->
       <div style="display: flex; gap: var(--spacing-md); margin-top: var(--spacing-xl);">
-        <a href="index.html" class="btn btn-outline" style="flex: 1;">Cancel</a>
-        <button type="submit" class="btn btn-primary btn-lg" style="flex: 2;">
-          🗳️ Create Poll
-        </button>
+        <a href="index.html" class="btn btn-outline" style="flex:1;">Cancel</a>
+        <button type="submit" class="btn btn-primary btn-lg" style="flex:2;">🗳️ Create Poll</button>
       </div>
     </form>
   </div>
@@ -100,23 +132,34 @@
   <script>
     let candidateCount = 0;
     let classList = [];
+    let registrationEnabled = false;
     const MAX_CANDIDATES = 10;
     const MIN_CANDIDATES = 2;
+
+    function toggleRegistration() {
+      registrationEnabled = !registrationEnabled;
+      const toggle = document.getElementById('registration-toggle');
+      const label = document.getElementById('registration-label');
+      const section = document.getElementById('classes-section');
+      if (registrationEnabled) {
+        toggle.classList.add('active');
+        label.textContent = 'Enabled';
+        section.style.display = 'block';
+      } else {
+        toggle.classList.remove('active');
+        label.textContent = 'Disabled';
+        section.style.display = 'none';
+        // Clear classes if disabled
+        classList = [];
+        renderClassTags();
+      }
+    }
 
     function addClass() {
       const input = document.getElementById('newClass');
       const className = input.value.trim().toUpperCase();
-      
-      if (!className) {
-        notifications.warning('Please enter a class name');
-        return;
-      }
-      
-      if (classList.includes(className)) {
-        notifications.warning('This class already exists');
-        return;
-      }
-      
+      if (!className) { notifications.warning('Enter class name'); return; }
+      if (classList.includes(className)) { notifications.warning('Already exists'); return; }
       classList.push(className);
       input.value = '';
       renderClassTags();
@@ -131,94 +174,60 @@
     function renderClassTags() {
       const container = document.getElementById('classes-tags');
       container.innerHTML = classList.map(c => `
-        <span style="display: inline-flex; align-items: center; gap: 4px; 
-                     background: var(--primary); color: white; padding: 4px 12px; 
-                     border-radius: var(--radius-full); font-size: 0.875rem;">
+        <span style="display:inline-flex; align-items:center; gap:4px; background:var(--primary); color:white; padding:4px 12px; border-radius:var(--radius-full); font-size:0.875rem;">
           ${c}
-          <button type="button" onclick="removeClass('${c}')" 
-                  style="background: none; border: none; color: white; cursor: pointer; padding: 0;">
-            ✕
-          </button>
+          <button type="button" onclick="removeClass('${c}')" style="background:none; border:none; color:white; cursor:pointer; padding:0;">✕</button>
         </span>
       `).join('');
-      
       document.getElementById('allowedClasses').value = classList.join(',');
     }
 
     function addCandidate() {
-      if (candidateCount >= MAX_CANDIDATES) {
-        notifications.warning(`Maximum ${MAX_CANDIDATES} candidates allowed`);
-        return;
-      }
-      
+      if (candidateCount >= MAX_CANDIDATES) { notifications.warning(`Max ${MAX_CANDIDATES}`); return; }
       candidateCount++;
       const container = document.getElementById('candidates-container');
       const candidateId = Utils.generateId();
-      
       const card = document.createElement('div');
       card.className = 'card';
       card.id = `candidate-${candidateId}`;
       card.style.animation = 'slideUp 0.3s ease';
-      
       card.innerHTML = `
         <div class="card-header">
           <h4>Candidate #${candidateCount}</h4>
-          <button type="button" class="btn btn-danger btn-sm" 
-                  onclick="removeCandidate('${candidateId}')">
-            🗑️ Remove
-          </button>
+          <button type="button" class="btn btn-danger btn-sm" onclick="removeCandidate('${candidateId}')">🗑️ Remove</button>
         </div>
-        
         <div class="form-group">
           <label class="form-label">Name *</label>
-          <input type="text" class="form-input candidate-name" 
-                 placeholder="Enter full name" required maxlength="50">
+          <input type="text" class="form-input candidate-name" placeholder="Full name" required maxlength="50">
         </div>
-        
         <div class="form-group">
           <label class="form-label">Class *</label>
-          <input type="text" class="form-input candidate-class" 
-                 placeholder="e.g., 10A" required maxlength="10">
+          <input type="text" class="form-input candidate-class" placeholder="e.g., 10A" required maxlength="10">
         </div>
-        
         <div class="form-group">
           <label class="form-label">Photo *</label>
-          <input type="file" class="form-input candidate-photo-input" 
-                 accept="image/*" required>
+          <input type="file" class="form-input candidate-photo-input" accept="image/*" required>
           <div class="photo-preview" style="margin-top: var(--spacing-sm);"></div>
         </div>
       `;
-      
       container.appendChild(card);
-      
-      // Add photo preview
       const photoInput = card.querySelector('.candidate-photo-input');
       photoInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) {
           const reader = new FileReader();
-          reader.onload = (event) => {
-            card.querySelector('.photo-preview').innerHTML = `
-              <img src="${event.target.result}" 
-                   style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid var(--primary-light);">
-            `;
+          reader.onload = (ev) => {
+            card.querySelector('.photo-preview').innerHTML = `<img src="${ev.target.result}" style="width:100px; height:100px; border-radius:50%; object-fit:cover; border:3px solid var(--primary-light);">`;
           };
           reader.readAsDataURL(file);
         }
       });
-      
       updateCandidateCount();
-      
-      // Scroll to new candidate
       card.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
     function removeCandidate(candidateId) {
-      if (candidateCount <= MIN_CANDIDATES) {
-        notifications.warning(`Minimum ${MIN_CANDIDATES} candidates required`);
-        return;
-      }
-      
+      if (candidateCount <= MIN_CANDIDATES) { notifications.warning(`Min ${MIN_CANDIDATES} candidates`); return; }
       const card = document.getElementById(`candidate-${candidateId}`);
       if (card) {
         card.style.animation = 'fadeOut 0.3s ease';
@@ -232,116 +241,77 @@
     }
 
     function renumberCandidates() {
-      const cards = document.querySelectorAll('#candidates-container .card');
-      cards.forEach((card, index) => {
-        card.querySelector('h4').textContent = `Candidate #${index + 1}`;
+      document.querySelectorAll('#candidates-container .card').forEach((card, i) => {
+        card.querySelector('h4').textContent = `Candidate #${i+1}`;
       });
     }
 
     function updateCandidateCount() {
       document.getElementById('candidate-count').textContent = `${candidateCount}/${MAX_CANDIDATES}`;
-      const addBtn = document.getElementById('add-candidate-btn');
-      addBtn.disabled = candidateCount >= MAX_CANDIDATES;
+      document.getElementById('add-candidate-btn').disabled = candidateCount >= MAX_CANDIDATES;
     }
 
-    // Live password matching
     document.getElementById('confirmPassword').addEventListener('input', function() {
-      const password = document.getElementById('masterPassword').value;
-      const matchHint = document.getElementById('password-match');
-      
-      if (this.value === '') {
-        matchHint.style.display = 'none';
-      } else if (this.value === password) {
-        matchHint.style.display = 'block';
-        matchHint.style.color = 'var(--success)';
-        matchHint.textContent = '✓ Passwords match';
+      const pw = document.getElementById('masterPassword').value;
+      const hint = document.getElementById('password-match');
+      if (this.value === '') hint.style.display = 'none';
+      else if (this.value === pw) {
+        hint.style.display = 'block';
+        hint.style.color = 'var(--success)';
+        hint.textContent = '✓ Passwords match';
       } else {
-        matchHint.style.display = 'block';
-        matchHint.style.color = 'var(--danger)';
-        matchHint.textContent = '✕ Passwords do not match';
+        hint.style.display = 'block';
+        hint.style.color = 'var(--danger)';
+        hint.textContent = '✕ Passwords do not match';
       }
     });
 
-    // Form submission
     document.getElementById('create-poll-form').addEventListener('submit', async (e) => {
       e.preventDefault();
-      
-      // Validate post name
       const postName = document.getElementById('postName').value.trim();
-      if (!postName) {
-        notifications.error('Please enter post name');
+      if (!postName) { notifications.error('Enter post name'); return; }
+      
+      if (registrationEnabled && classList.length === 0) {
+        notifications.error('Add at least one class when registration is enabled');
         return;
       }
-      
-      // Validate classes
-      if (classList.length === 0) {
-        notifications.error('Please add at least one class');
-        return;
-      }
-      
-      // Validate candidates
+
       const candidateCards = document.querySelectorAll('#candidates-container .card');
-      if (candidateCards.length < MIN_CANDIDATES) {
-        notifications.error(`Minimum ${MIN_CANDIDATES} candidates required`);
-        return;
-      }
-      
-      // Validate password
+      if (candidateCards.length < MIN_CANDIDATES) { notifications.error(`Min ${MIN_CANDIDATES} candidates`); return; }
+
       const masterPassword = document.getElementById('masterPassword').value;
       const confirmPassword = document.getElementById('confirmPassword').value;
-      
-      if (masterPassword.length < 4) {
-        notifications.error('Password must be at least 4 characters');
-        return;
-      }
-      
-      if (masterPassword !== confirmPassword) {
-        notifications.error('Passwords do not match');
-        return;
-      }
-      
-      // Show loading state
+      if (masterPassword.length < 4) { notifications.error('Password min 4 characters'); return; }
+      if (masterPassword !== confirmPassword) { notifications.error('Passwords do not match'); return; }
+
       const submitBtn = e.target.querySelector('button[type="submit"]');
       const originalText = submitBtn.textContent;
       submitBtn.textContent = 'Creating...';
       submitBtn.disabled = true;
-      
+
       try {
-        // Collect candidates
         const candidates = [];
-        
         for (const card of candidateCards) {
           const name = card.querySelector('.candidate-name').value.trim();
-          const className = card.querySelector('.candidate-class').value.trim();
+          const cls = card.querySelector('.candidate-class').value.trim();
           const photoFile = card.querySelector('.candidate-photo-input').files[0];
-          
-          if (!name || !className || !photoFile) {
-            notifications.error('All candidate fields are required');
+          if (!name || !cls || !photoFile) {
+            notifications.error('Fill all candidate fields');
             submitBtn.textContent = originalText;
             submitBtn.disabled = false;
             return;
           }
-          
           const photoDataUrl = await Utils.compressImage(photoFile, 200, 200, 0.7);
-          
-          candidates.push({
-            id: Utils.generateId(),
-            name,
-            class: className,
-            photo: photoDataUrl,
-            votes: 0
-          });
+          candidates.push({ id: Utils.generateId(), name, class: cls, photo: photoDataUrl, votes: 0 });
         }
-        
-        // Hash password
+
         const passwordHash = await cryptoManager.hashPassword(masterPassword);
-        
-        // Create poll object
         const poll = {
           id: Utils.generateId(),
           postName,
           candidates,
-          allowedClasses: classList,
+          allowedClasses: registrationEnabled ? classList : [],
+          enableRegistration: registrationEnabled,
           masterPasswordHash: passwordHash,
           status: 'pending',
           votedCombos: [],
@@ -349,38 +319,29 @@
           startedAt: null,
           endedAt: null
         };
-        
-        // Save to database
+
         await db.savePoll(poll);
-        
-        notifications.success('Poll created successfully!');
+        notifications.success('Poll created!');
         Utils.playSound('success');
-        
-        // Redirect after short delay
-        setTimeout(() => {
-          window.location.href = 'index.html';
-        }, 500);
-        
+        setTimeout(() => { window.location.href = 'index.html'; }, 500);
       } catch (error) {
-        console.error('Error creating poll:', error);
+        console.error(error);
         notifications.error('Failed to create poll');
         submitBtn.textContent = originalText;
         submitBtn.disabled = false;
       }
     });
 
-    // Initialize with 2 candidates
+    document.getElementById('newClass').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); addClass(); }
+    });
+
+    // Init candidates
     addCandidate();
     addCandidate();
 
-    // Enter key to add class
-    document.getElementById('newClass').addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        addClass();
-      }
-    });
+    // Set initial toggle state
+    document.getElementById('registration-toggle').classList.remove('active');
   </script>
 </body>
 </html>
-  

@@ -151,7 +151,7 @@
                 📊 Results
               </button>
               <button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); openActionModal('${poll.id}', 'delete')" title="Delete poll">
-                🗑️
+                ❌
               </button>
             `;
           }
@@ -197,7 +197,7 @@
       document.getElementById('master-password').value = '';
       document.getElementById('password-modal-title').textContent = 
         actionType === 'start' ? '🔐 Start Poll' : 
-        actionType === 'delete' ? '🗑️ Delete Poll' : '🔐 View Results';
+        actionType === 'delete' ? '❌ Delete Poll' : '🔐 View Results';
       showModal('password-modal');
       setTimeout(() => document.getElementById('master-password').focus(), 100);
     }

@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#6366f1">
+  <title>Results - Election Portal</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <header style="display: flex; align-items: center; gap: var(--spacing-md); margin-bottom: var(--spacing-xl);">
+      <a href="index.html" class="btn btn-outline btn-icon" title="Back">
+        ←
+      </a>
+      <h1 style="margin: 0;">📊 Election Results</h1>
+    </header>
+
+    <div id="results-container">
+      <!-- Skeleton loading -->
+      <div class="skeleton" style="height: 200px; margin-bottom: var(--spacing-md);"></div>
+      <div class="skeleton" style="height: 300px; margin-bottom: var(--spacing-md);"></div>
+    </div>
+
+    <!-- Error State -->
+    <div id="error-state" style="display: none; text-align: center;">
+      <div style="font-size: 5rem;">🔒</div>
+      <h2>Results Not Available</h2>
+      <p style="color: var(--text-secondary);">The poll has not ended yet or is not found.</p>
+      <a href="index.html" class="btn btn-primary">Return Home</a>
+    </div>
+  </div>
+
+  <script src="js/db.js"></script>
+  <script src="js/crypto.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/notifications.js"></script>
+  <script src="js/theme.js"></script>
+  <script>
+    const pollId = Utils.getQueryParam('pollId');
+    let poll = null;
+
+    async function loadResults() {
+      try {
+        poll = await db.getPoll(pollId);
+        
+        if (!poll || poll.status !== 'ended') {
+          document.getElementById('results-container').style.display = 'none';
+          document.getElementById('error-state').style.display = 'block';
+          return;
+        }
+
+        renderResults();
+        
+      } catch (error) {
+        console.error('Error loading results:', error);
+        notifications.error('Failed to load results');
+      }
+    }
+
+    function renderResults() {
+      const container = document.getElementById('results-container');
+      const candidates = poll.candidates;
+      const totalVotes = candidates.reduce((sum, c) => sum + c.votes, 0);
+      const maxVotes = Math.max(...candidates.map(c => c.votes));
+      const winners = candidates.filter(c => c.votes === maxVotes);
+      const sortedCandidates = [...candidates].sort((a, b) => b.votes - a.votes);
+
+      // Winner section
+      let winnerHTML = '';
+      if (winners.length === 1 && maxVotes > 0) {
+        winnerHTML = `
+          <div class="winner-section">
+            <h2 style="color: white;">🎉 Winner 🎉</h2>
+            <img src="${winners[0].photo}" class="winner-photo" alt="${winners[0].name}">
+            <h3 style="color: white; font-size: 1.75rem;">${winners[0].name}</h3>
+            <p style="color: white; font-size: 1.25rem;">Class: ${winners[0].class}</p>
+            <div style="font-size: 3rem; font-weight: 800; color: white;">
+              ${winners[0].votes} <small style="font-size: 1rem;">votes</small>
+            </div>
+            <p style="color: rgba(255,255,255,0.9); margin-top: var(--spacing-md);">
+              ${((winners[0].votes / totalVotes) * 100).toFixed(1)}% of total votes
+            </p>
+          </div>
+        `;
+      } else if (winners.length > 1) {
+        winnerHTML = `
+          <div class="glass-panel" style="text-align: center; margin-bottom: var(--spacing-xl);">
+            <div style="font-size: 4rem;">🤝</div>
+            <h2>No Clear Majority</h2>
+            <p style="color: var(--text-secondary);">
+              ${winners.length} candidates tied with ${maxVotes} votes each
+            </p>
+            <div style="display: flex; gap: var(--spacing-md); justify-content: center; flex-wrap: wrap; margin-top: var(--spacing-md);">
+              ${winners.map(w => `
+                <div style="text-align: center;">
+                  <img src="${w.photo}" style="width: 60px; height: 60px; border-radius: 50%;">
+                  <p style="font-weight: 600;">${w.name}</p>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      } else {
+        winnerHTML = `
+          <div class="glass-panel" style="text-align: center; margin-bottom: var(--spacing-xl);">
+            <div style="font-size: 4rem;">📭</div>
+            <h2>No Votes Cast</h2>
+            <p style="color: var(--text-secondary);">No one voted in this election.</p>
+          </div>
+        `;
+      }
+
+      // Candidate rankings
+      const rankingsHTML = sortedCandidates.map((candidate, index) => {
+        const percentage = totalVotes > 0 ? ((candidate.votes / totalVotes) * 100).toFixed(1) : 0;
+        const isWinner = winners.includes(candidate);
+        
+        return `
+          <div class="card" style="${isWinner ? 'border-left: 4px solid var(--warning);' : ''}">
+            <div style="display: flex; align-items: center; gap: var(--spacing-md);">
+              <div style="font-size: 2rem; font-weight: 800; color: var(--primary); min-width: 40px;">
+                #${index + 1}
+              </div>
+              <img src="${candidate.photo}" style="width: 50px; height: 50px; border-radius: 50%;">
+              <div style="flex: 1;">
+                <strong>${candidate.name}</strong>
+                <br>
+                <small style="color: var(--text-secondary);">Class: ${candidate.class}</small>
+              </div>
+              <div style="text-align: right;">
+                <div class="vote-counter">${candidate.votes}</div>
+                <small style="color: var(--text-secondary);">${percentage}%</small>
+              </div>
+            </div>
+            <div class="progress-bar" style="margin-top: var(--spacing-sm);">
+              <div class="progress-fill" style="width: ${percentage}%; ${isWinner ? 'background: linear-gradient(90deg, #fbbf24, #f59e0b);' : ''}"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Class-wise turnout
+      const classTurnout = {};
+      poll.allowedClasses.forEach(cls => classTurnout[cls] = 0);
+      poll.votedCombos.forEach(combo => {
+        const cls = combo.split('|')[1];
+        if (classTurnout.hasOwnProperty(cls)) classTurnout[cls]++;
+      });
+
+      const turnoutHTML = Object.entries(classTurnout).map(([cls, count]) => `
+        <tr>
+          <td><strong>${cls}</strong></td>
+          <td>${count}</td>
+          <td>
+            <div class="progress-bar" style="height: 6px;">
+              <div class="progress-fill" style="width: ${poll.votedCombos.length > 0 ? (count / poll.votedCombos.length) * 100 : 0}%;"></div>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+
+      // Full results HTML
+      container.innerHTML = `
+        ${winnerHTML}
+        
+        <h2>📋 Rankings</h2>
+        ${rankingsHTML}
+        
+        <div class="glass-panel" style="margin-top: var(--spacing-xl);">
+          <h3>👥 Class-wise Voter Turnout</h3>
+          <table class="result-table" style="width: 100%;">
+            <thead>
+              <tr>
+                <th>Class</th>
+                <th>Voters</th>
+                <th>Distribution</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${turnoutHTML}
+            </tbody>
+            <tfoot>
+              <tr style="font-weight: bold; background: var(--bg-tertiary);">
+                <td>Total</td>
+                <td colspan="2">${poll.votedCombos.length} votes</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <div style="margin-top: var(--spacing-xl); display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md);">
+          <button class="btn btn-primary" onclick="downloadPDF()">
+            📥 Download PDF
+          </button>
+          <button class="btn btn-outline" onclick="downloadCSV()">
+            📊 Export CSV
+          </button>
+        </div>
+        
+        <button class="btn btn-outline btn-block" onclick="window.print()" style="margin-top: var(--spacing-md);">
+          🖨️ Print Results
+        </button>
+
+        <div style="margin-top: var(--spacing-md); text-align: center; color: var(--text-secondary); font-size: 0.875rem;">
+          Poll created: ${Utils.formatDate(poll.createdAt)}<br>
+          ${poll.endedAt ? `Poll ended: ${Utils.formatDate(poll.endedAt)}` : ''}
+        </div>
+      `;
+    }
+
+    function downloadPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      
+      // Title
+      doc.setFontSize(20);
+      doc.setTextColor(99, 102, 241);
+      doc.text(`Election Results`, 105, 20, { align: 'center' });
+      
+      doc.setFontSize(16);
+      doc.setTextColor(0, 0, 0);
+      doc.text(poll.postName, 105, 30, { align: 'center' });
+      
+      // Winner
+      const candidates = poll.candidates;
+      const maxVotes = Math.max(...candidates.map(c => c.votes));
+      const winners = candidates.filter(c => c.votes === maxVotes);
+      
+      let yPos = 45;
+      
+      if (winners.length === 1 && maxVotes > 0) {
+        doc.setFontSize(14);
+        doc.setTextColor(245, 158, 11);
+        doc.text(`Winner: ${winners[0].name} (${winners[0].class})`, 105, yPos, { align: 'center' });
+        doc.text(`Votes: ${winners[0].votes}`, 105, yPos + 8, { align: 'center' });
+        yPos += 20;
+      }
+      
+      // Candidates table
+      const tableData = candidates
+        .sort((a, b) => b.votes - a.votes)
+        .map((c, i) => [i + 1, c.name, c.class, c.votes.toString()]);
+      
+      doc.autoTable({
+        startY: yPos,
+        head: [['#', 'Candidate', 'Class', 'Votes']],
+        body: tableData,
+        theme: 'striped',
+        headStyles: {
+          fillColor: [99, 102, 241],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold'
+        }
+      });
+      
+      // Class turnout
+      const finalY = doc.lastAutoTable.finalY + 10;
+      const classTurnout = {};
+      poll.allowedClasses.forEach(cls => classTurnout[cls] = 0);
+      poll.votedCombos.forEach(combo => {
+        const cls = combo.split('|')[1];
+        if (classTurnout.hasOwnProperty(cls)) classTurnout[cls]++;
+      });
+      
+      const turnoutData = Object.entries(classTurnout).map(([cls, count]) => [cls, count.toString()]);
+      
+      doc.setFontSize(14);
+      doc.setTextColor(0, 0, 0);
+      doc.text('Class-wise Turnout', 14, finalY);
+      
+      doc.autoTable({
+        startY: finalY + 5,
+        head: [['Class', 'Voters']],
+        body: turnoutData,
+        theme: 'striped',
+        headStyles: {
+          fillColor: [16, 185, 129],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold'
+        }
+      });
+      
+      // Footer
+      doc.setFontSize(10);
+      doc.setTextColor(128, 128, 128);
+      doc.text(`Generated on ${new Date().toLocaleString('en-IN')}`, 105, 290, { align: 'center' });
+      
+      doc.save(`Results_${poll.postName.replace(/\s+/g, '_')}.pdf`);
+      notifications.success('PDF downloaded successfully');
+    }
+
+    function downloadCSV() {
+      const candidates = poll.candidates.sort((a, b) => b.votes - a.votes);
+      let csv = 'Rank,Name,Class,Votes\n';
+      
+      candidates.forEach((c, i) => {
+        csv += `${i + 1},"${c.name}","${c.class}",${c.votes}\n`;
+      });
+      
+      csv += '\nClass-wise Turnout\n';
+      csv += 'Class,Voters\n';
+      
+      const classTurnout = {};
+      poll.allowedClasses.forEach(cls => classTurnout[cls] = 0);
+      poll.votedCombos.forEach(combo => {
+        const cls = combo.split('|')[1];
+        if (classTurnout.hasOwnProperty(cls)) classTurnout[cls]++;
+      });
+      
+      Object.entries(classTurnout).forEach(([cls, count]) => {
+        csv += `"${cls}",${count}\n`;
+      });
+      
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Results_${poll.postName.replace(/\s+/g, '_')}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      notifications.success('CSV exported successfully');
+    }
+
+    // Initial load
+    loadResults();
+  </script>
+</body>
+</html>

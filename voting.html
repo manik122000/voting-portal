@@ -9,7 +9,6 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    /* Numeric input without spinners */
     input[type="number"]::-webkit-inner-spin-button,
     input[type="number"]::-webkit-outer-spin-button {
       -webkit-appearance: none;
@@ -64,7 +63,7 @@
         </button>
 
         <div style="margin-top: var(--spacing-xl); padding-top: var(--spacing-lg); border-top: 2px solid var(--border-color);">
-          <button id="end-poll-btn" class="btn btn-outline btn-block" style="color: var(--danger); border-color: var(--danger);">
+          <button id="end-poll-btn-initial" class="btn btn-outline btn-block" style="color: var(--danger); border-color: var(--danger);">
             ⛔ End Poll (Officer Only)
           </button>
           <p style="text-align: center; font-size: 0.75rem; color: var(--text-secondary); margin-top: var(--spacing-sm);">
@@ -85,6 +84,16 @@
           <button class="modal-close" onclick="backToInitial()">✕</button>
         </div>
         <div id="candidates-list"></div>
+        
+        <!-- End Poll button always visible inside candidate modal -->
+        <div style="margin-top: var(--spacing-xl); padding-top: var(--spacing-lg); border-top: 2px solid var(--border-color);">
+          <button id="end-poll-btn-candidate" class="btn btn-outline btn-block" style="color: var(--danger); border-color: var(--danger);">
+            ⛔ End Poll (Officer Only)
+          </button>
+          <p style="text-align: center; font-size: 0.75rem; color: var(--text-secondary); margin-top: var(--spacing-sm);">
+            Requires master password
+          </p>
+        </div>
       </div>
     </div>
 
@@ -131,7 +140,7 @@
       </div>
     </div>
 
-    <!-- End Poll Password Modal -->
+    <!-- End Poll Password Modal (shared) -->
     <div id="end-password-modal" class="modal-overlay">
       <div class="modal-dialog">
         <div class="modal-header">
@@ -192,6 +201,12 @@
 
         updateStatusBar();
         document.addEventListener('keydown', handleKeyboard);
+        
+        // Attach end poll triggers (both initial and candidate buttons)
+        document.getElementById('end-poll-btn-initial').addEventListener('click', openEndPollModal);
+        document.getElementById('end-poll-btn-candidate').addEventListener('click', openEndPollModal);
+        document.getElementById('confirm-end-btn').addEventListener('click', executeEndPoll);
+        
       } catch (error) {
         console.error('Error initializing voting:', error);
         notifications.error('Failed to load voting interface');
@@ -207,8 +222,8 @@
     function handleKeyboard(e) {
       if (e.key === 'Escape') {
         if (document.getElementById('confirm-modal').classList.contains('active')) cancelVote();
-        else if (document.getElementById('candidate-modal').classList.contains('active')) backToInitial();
         else if (document.getElementById('end-password-modal').classList.contains('active')) closeModal('end-password-modal');
+        else if (document.getElementById('candidate-modal').classList.contains('active') && currentPoll.registrationRequired) backToInitial();
       }
     }
 
@@ -245,7 +260,7 @@
     function showCandidatesModal(rollNumber = '', className = '') {
       document.getElementById('post-title-display').textContent = currentPoll.postName;
       document.getElementById('voter-info-display').textContent = 
-        currentPoll.registrationRequired ? `${rollNumber} (${className})` : 'Open voting';
+        currentPoll.registrationRequired ? `${rollNumber} (${className})` : 'Open voting – no verification';
       
       const list = document.getElementById('candidates-list');
       list.innerHTML = currentPoll.candidates.map((candidate, index) => `
@@ -356,26 +371,26 @@
     }
 
     function backToInitial() {
+      if (!currentPoll.registrationRequired) return; // no initial modal to go back to
       closeModal('candidate-modal');
-      if (currentPoll.registrationRequired) {
-        showModal('initial-modal');
-        document.getElementById('rollNumber').focus();
-      } else {
-        // If open voting, just close candidate modal (or show nothing extra)
-        // but we need a way to go back? Actually we can stay on candidate modal,
-        // so this function might not be called. We'll hide candidate modal if back pressed.
-      }
+      showModal('initial-modal');
+      document.getElementById('rollNumber').focus();
     }
 
-    // End poll
-    document.getElementById('end-poll-btn').addEventListener('click', () => {
+    // End poll – open password modal
+    function openEndPollModal() {
+      document.getElementById('end-password').value = '';
       showModal('end-password-modal');
       setTimeout(() => document.getElementById('end-password').focus(), 100);
-    });
+    }
 
-    document.getElementById('confirm-end-btn').addEventListener('click', async () => {
+    // Actually end the poll after password verification
+    async function executeEndPoll() {
       const password = document.getElementById('end-password').value;
-      if (!password) { notifications.warning('Enter password'); return; }
+      if (!password) {
+        notifications.warning('Enter password');
+        return;
+      }
       const valid = await cryptoManager.verifyPassword(password, currentPoll.masterPasswordHash);
       if (!valid) {
         notifications.error('Incorrect password');
@@ -387,7 +402,7 @@
       notifications.success('Poll ended');
       Utils.playSound('success');
       setTimeout(() => window.location.href = 'index.html', 800);
-    });
+    }
 
     function showModal(id) { document.getElementById(id).classList.add('active'); }
     function closeModal(id) { document.getElementById(id).classList.remove('active'); }
@@ -396,10 +411,13 @@
 
     document.querySelectorAll('.modal-overlay').forEach(overlay => {
       overlay.addEventListener('click', (e) => {
-        if (e.target === overlay && overlay.id !== 'initial-modal') closeModal(overlay.id);
+        if (e.target === overlay && overlay.id !== 'initial-modal' && overlay.id !== 'candidate-modal') {
+          closeModal(overlay.id);
+        }
       });
     });
 
+    // Start
     init();
   </script>
 </body>

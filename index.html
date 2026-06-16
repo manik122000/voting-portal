@@ -4,46 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#6366f1">
-  <meta name="description" content="Secure Offline Voting Portal">
   <title>Election Portal - Home</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    .poll-actions {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-top: 12px;
-    }
-    
-    .delete-btn {
-      background: transparent;
-      border: 1px solid var(--danger);
-      color: var(--danger);
-      padding: 6px 14px;
-      border-radius: 20px;
-      cursor: pointer;
-      font-size: 0.8125rem;
-      font-weight: 600;
-      transition: all 0.2s ease;
-    }
-    
-    .delete-btn:hover {
-      background: var(--danger);
-      color: white;
-    }
-    
-    .delete-confirm-modal .modal-dialog {
-      max-width: 380px;
-      text-align: center;
-    }
-    
-    .delete-icon {
-      font-size: 3rem;
-      margin-bottom: 12px;
-    }
-  </style>
 </head>
 <body>
   <div class="app-container">
@@ -53,35 +17,27 @@
         Election Portal
       </h1>
       <p style="color: var(--text-secondary);">Secure • Offline • Reliable</p>
-      
-      <div style="margin-top: var(--spacing-lg);">
-        <a href="create.html" class="btn btn-primary btn-lg">
-          <span>➕</span> Create New Poll
-        </a>
-      </div>
+      <a href="create.html" class="btn btn-primary btn-lg" style="margin-top: var(--spacing-lg);">
+        <span>➕</span> Create New Poll
+      </a>
     </header>
 
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-lg);">
-      <h2 style="margin: 0;">Polls</h2>
-      <button onclick="refreshPolls()" class="btn btn-sm btn-outline" title="Refresh">
-        🔄
-      </button>
+      <h2 style="margin: 0;">Active Polls</h2>
+      <button onclick="refreshPolls()" class="btn btn-sm btn-outline" title="Refresh">🔄</button>
     </div>
 
     <div id="polls-container">
-      <!-- Skeleton Loading -->
       <div class="skeleton" style="height: 120px; margin-bottom: var(--spacing-md);"></div>
       <div class="skeleton" style="height: 120px; margin-bottom: var(--spacing-md);"></div>
     </div>
 
-    <!-- Empty State -->
     <div id="empty-state" style="display: none; text-align: center; padding: var(--spacing-xl);">
       <div style="font-size: 5rem;">📋</div>
       <h3>No Polls Yet</h3>
       <p style="color: var(--text-secondary);">Create your first election poll to get started.</p>
     </div>
 
-    <!-- Stats Section -->
     <div id="stats-section" style="margin-top: var(--spacing-xl); display: none;">
       <div class="glass-panel">
         <h3>📊 Quick Stats</h3>
@@ -103,7 +59,7 @@
     </div>
   </div>
 
-  <!-- Password Modal -->
+  <!-- Password Modal (for Start / Result / Delete) -->
   <div id="password-modal" class="modal-overlay">
     <div class="modal-dialog">
       <div class="modal-header">
@@ -115,27 +71,10 @@
         <input type="password" id="master-password" class="form-input" 
                placeholder="Enter master password" autocomplete="off"
                onkeypress="if(event.key==='Enter') confirmAction()">
-        <span class="form-hint">Password set during poll creation</span>
       </div>
       <div style="display: flex; gap: var(--spacing-md); justify-content: flex-end;">
         <button class="btn btn-outline" onclick="closeModal('password-modal')">Cancel</button>
         <button class="btn btn-primary" id="confirm-password-btn">Confirm</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Delete Confirmation Modal -->
-  <div id="delete-confirm-modal" class="modal-overlay delete-confirm-modal">
-    <div class="modal-dialog">
-      <div class="delete-icon">🗑️</div>
-      <h3>Delete Poll?</h3>
-      <p style="color: var(--text-secondary); margin-bottom: 8px;" id="delete-poll-name"></p>
-      <p style="color: var(--danger); font-size: 0.875rem; font-weight: 600;">
-        ⚠️ This action cannot be undone!
-      </p>
-      <div style="display: flex; gap: var(--spacing-md); justify-content: center; margin-top: var(--spacing-lg);">
-        <button class="btn btn-outline" onclick="closeModal('delete-confirm-modal')">Cancel</button>
-        <button class="btn btn-danger" id="confirm-delete-btn">Delete Permanently</button>
       </div>
     </div>
   </div>
@@ -146,8 +85,7 @@
   <script src="notifications.js"></script>
   <script src="theme.js"></script>
   <script>
-    let currentAction = null;
-    let pollToDelete = null;
+    let currentAction = null; // { pollId, type: 'start' | 'result' | 'delete' }
 
     async function loadPolls() {
       try {
@@ -166,13 +104,11 @@
         emptyState.style.display = 'none';
         statsSection.style.display = 'block';
 
-        // Sort polls: active first, then pending, then ended
         const sortedPolls = polls.sort((a, b) => {
           const order = { active: 0, pending: 1, ended: 2 };
           return order[a.status] - order[b.status];
         });
 
-        // Update stats
         document.getElementById('stat-total').textContent = polls.length;
         document.getElementById('stat-active').textContent = polls.filter(p => p.status === 'active').length;
         document.getElementById('stat-ended').textContent = polls.filter(p => p.status === 'ended').length;
@@ -181,75 +117,47 @@
           const statusBadge = `<span class="badge badge-${poll.status}">${poll.status}</span>`;
           const candidateCount = poll.candidates?.length || 0;
           const voterCount = poll.votedCombos?.length || 0;
-          
+          const registrationEnabled = poll.enableRegistration ? '🔒 Reg. ON' : '🔓 Open';
+
           let actionButtons = '';
-          
           if (poll.status === 'pending') {
             actionButtons = `
-              <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); openActionModal('${poll.id}', 'start')">
-                ▶️ Start Poll
-              </button>
-              <button class="delete-btn" onclick="event.stopPropagation(); confirmDelete('${poll.id}')">
-                🗑️ Delete
-              </button>
+              <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); openActionModal('${poll.id}','start')">▶️ Start</button>
+              <button class="btn btn-outline btn-sm" style="color: var(--danger);" onclick="event.stopPropagation(); openActionModal('${poll.id}','delete')">🗑️ Delete</button>
             `;
           } else if (poll.status === 'active') {
             actionButtons = `
-              <button class="btn btn-success btn-sm" onclick="event.stopPropagation(); openVoting('${poll.id}')">
-                🗳️ Open Voting
-              </button>
+              <button class="btn btn-success btn-sm" onclick="event.stopPropagation(); openVoting('${poll.id}')">🗳️ Voting</button>
             `;
           } else if (poll.status === 'ended') {
             actionButtons = `
-              <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); openResults('${poll.id}')">
-                📊 View Results
-              </button>
-              <button class="delete-btn" onclick="event.stopPropagation(); confirmDelete('${poll.id}')">
-                🗑️ Delete
-              </button>
+              <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); openResults('${poll.id}')">📊 Results</button>
+              <button class="btn btn-outline btn-sm" style="color: var(--danger);" onclick="event.stopPropagation(); openActionModal('${poll.id}','delete')">🗑️ Delete</button>
             `;
           }
 
           return `
-            <div class="card" onclick="handleCardClick('${poll.id}')" style="cursor: pointer;">
+            <div class="card" style="cursor: pointer;">
               <div class="card-header">
                 <div>
-                  <h3 style="margin: 0;">${escapeHtml(poll.electionName || poll.postName)}</h3>
-                  <small style="color: var(--text-secondary);">${escapeHtml(poll.institution || '')}</small>
-                  <div style="margin-top: 4px;">
-                    ${statusBadge}
-                  </div>
+                  <h3 style="margin:0;">${escapeHtml(poll.postName)}</h3>
+                  ${statusBadge}
                 </div>
-                <div style="font-size: 0.875rem; color: var(--text-secondary);">
-                  ${Utils.formatDate(poll.createdAt)}
-                </div>
+                <div style="font-size:0.75rem; color: var(--text-secondary);">${registrationEnabled}</div>
               </div>
-              <div style="margin-bottom: var(--spacing-md); color: var(--text-secondary);">
-                <span>📋 ${escapeHtml(poll.postName)}</span>
-                <span style="margin-left: var(--spacing-lg);">👥 ${candidateCount} Candidates</span>
-                <span style="margin-left: var(--spacing-lg);">✅ ${voterCount} Votes</span>
+              <div style="margin-bottom:8px; color: var(--text-secondary);">
+                👥 ${candidateCount} | ✅ ${voterCount} votes
               </div>
-              <div class="poll-actions">
+              <div style="display:flex; gap:8px; flex-wrap:wrap;">
                 ${actionButtons}
               </div>
             </div>
           `;
         }).join('');
       } catch (error) {
-        console.error('Error loading polls:', error);
+        console.error(error);
         notifications.error('Failed to load polls');
       }
-    }
-
-    function handleCardClick(pollId) {
-      // Navigate based on status
-      db.getPoll(pollId).then(poll => {
-        if (poll.status === 'active') {
-          openVoting(pollId);
-        } else if (poll.status === 'ended') {
-          openResults(pollId);
-        }
-      });
     }
 
     function openVoting(pollId) {
@@ -260,144 +168,86 @@
       window.location.href = `results.html?pollId=${pollId}`;
     }
 
-    function openActionModal(pollId, actionType) {
-      currentAction = { pollId, actionType };
+    function openActionModal(pollId, type) {
+      currentAction = { pollId, type };
       document.getElementById('master-password').value = '';
       document.getElementById('password-modal-title').textContent = 
-        actionType === 'start' ? '🔐 Start Poll' : '🔐 View Results';
+        type === 'start' ? '🔐 Start Poll' : 
+        type === 'delete' ? '🔐 Delete Poll' : '🔐 View Results';
       showModal('password-modal');
-      
-      setTimeout(() => {
-        document.getElementById('master-password').focus();
-      }, 100);
+      document.getElementById('master-password').focus();
     }
-
-    // Delete functionality
-    async function confirmDelete(pollId) {
-      pollToDelete = pollId;
-      const poll = await db.getPoll(pollId);
-      document.getElementById('delete-poll-name').textContent = 
-        `${poll.electionName || poll.postName} - ${poll.postName}`;
-      showModal('delete-confirm-modal');
-    }
-
-    document.getElementById('confirm-delete-btn').addEventListener('click', async () => {
-      if (!pollToDelete) return;
-      
-      try {
-        await db.deletePoll(pollToDelete);
-        closeModal('delete-confirm-modal');
-        notifications.success('Poll deleted successfully');
-        pollToDelete = null;
-        await loadPolls();
-      } catch (error) {
-        console.error('Error deleting poll:', error);
-        notifications.error('Failed to delete poll');
-      }
-    });
 
     async function confirmAction() {
       const password = document.getElementById('master-password').value;
-      
-      if (!password) {
-        notifications.warning('Please enter password');
-        return;
-      }
-
+      if (!password) { notifications.warning('Enter password'); return; }
       try {
         const poll = await db.getPoll(currentAction.pollId);
-        
-        if (!poll) {
-          notifications.error('Poll not found');
-          return;
-        }
-
-        const isValid = await cryptoManager.verifyPassword(password, poll.masterPasswordHash);
-        
-        if (!isValid) {
+        if (!poll) { notifications.error('Poll not found'); return; }
+        const valid = await cryptoManager.verifyPassword(password, poll.masterPasswordHash);
+        if (!valid) {
           notifications.error('Incorrect password');
           document.getElementById('master-password').classList.add('form-error');
-          setTimeout(() => {
-            document.getElementById('master-password').classList.remove('form-error');
-          }, 1000);
+          setTimeout(() => document.getElementById('master-password').classList.remove('form-error'), 1000);
           return;
         }
-
         closeModal('password-modal');
-
-        if (currentAction.actionType === 'start') {
-          await handleStartPoll(poll);
-        } else if (currentAction.actionType === 'result') {
-          openResults(poll.id);
-        }
+        if (currentAction.type === 'start') await handleStartPoll(poll);
+        else if (currentAction.type === 'result') openResults(poll.id);
+        else if (currentAction.type === 'delete') await handleDeletePoll(poll);
       } catch (error) {
-        console.error('Error:', error);
-        notifications.error('An error occurred');
+        console.error(error);
+        notifications.error('Error');
       }
     }
 
     async function handleStartPoll(poll) {
       const allPolls = await db.getPolls();
-      const activePoll = allPolls.find(p => p.status === 'active' && p.id !== poll.id);
-      
-      if (activePoll) {
-        notifications.warning(`Another poll "${activePoll.electionName || activePoll.postName}" is already active. End it first.`);
+      if (allPolls.some(p => p.status === 'active' && p.id !== poll.id)) {
+        notifications.warning('Another poll is active. End it first.');
         return;
       }
-
       poll.status = 'active';
       poll.startedAt = Date.now();
       await db.savePoll(poll);
-      
-      notifications.success(`Poll "${poll.electionName || poll.postName}" started successfully!`);
+      notifications.success(`Poll "${poll.postName}" started!`);
       Utils.playSound('success');
-      
-      await loadPolls();
+      loadPolls();
     }
 
-    function showModal(id) {
-      document.getElementById(id).classList.add('active');
+    async function handleDeletePoll(poll) {
+      if (!confirm(`Delete poll "${poll.postName}" permanently? This cannot be undone.`)) return;
+      await db.deletePoll(poll.id);
+      notifications.success('Poll deleted');
+      loadPolls();
     }
 
-    function closeModal(id) {
-      document.getElementById(id).classList.remove('active');
-    }
+    function showModal(id) { document.getElementById(id).classList.add('active'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
 
     async function refreshPolls() {
       db.clearCache();
       await loadPolls();
-      notifications.info('Polls refreshed');
+      notifications.info('Refreshed');
     }
 
     function escapeHtml(text) {
       const div = document.createElement('div');
-      div.textContent = text || '';
+      div.textContent = text;
       return div.innerHTML;
     }
 
-    // Close modals on overlay click
-    document.querySelectorAll('.modal-overlay').forEach(overlay => {
-      overlay.addEventListener('click', (e) => {
-        if (e.target === e.currentTarget) {
-          closeModal(overlay.id);
-        }
-      });
-    });
-
     document.getElementById('confirm-password-btn').addEventListener('click', confirmAction);
 
-    // Keyboard shortcuts
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        closeModal('password-modal');
-        closeModal('delete-confirm-modal');
-      }
+    document.getElementById('password-modal').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closeModal('password-modal');
     });
 
-    // Auto-refresh every 30 seconds
-    setInterval(refreshPolls, 30000);
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeModal('password-modal');
+    });
 
-    // Initial load
+    setInterval(refreshPolls, 30000);
     loadPolls();
   </script>
 </body>

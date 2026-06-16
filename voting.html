@@ -10,99 +10,77 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
-  <!-- Live Status Bar -->
-  <div style="background: var(--primary); color: white; padding: 8px; text-align: center; font-size: 0.875rem; position: sticky; top: 0; z-index: 100;">
+  <!-- Status Bar -->
+  <div style="background: var(--primary); color: white; padding: 8px 16px; text-align: center; font-size: 0.875rem; position: sticky; top: 0; z-index: 100; display: flex; justify-content: space-between; align-items: center;">
     <span id="status-bar">🟢 Voting Active</span>
+    <span id="vote-count-badge" style="background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 12px; font-size: 0.75rem;">0 votes</span>
   </div>
 
   <div class="app-container">
-    <!-- Initial Verification Modal -->
-    <div id="initial-modal" class="modal-overlay active">
+    <!-- Initial Verification Modal (only if registration enabled) -->
+    <div id="initial-modal" class="modal-overlay">
       <div class="modal-dialog">
         <div class="modal-header">
           <h2>🗳️ Voter Verification</h2>
-          <div id="voter-queue-badge" style="background: var(--success); color: white; padding: 4px 12px; border-radius: var(--radius-full); font-size: 0.875rem;">
-            Next Voter
-          </div>
+          <div style="background: var(--success); color: white; padding: 4px 12px; border-radius: var(--radius-full); font-size: 0.8125rem;">Ready</div>
         </div>
-        
         <div class="form-group">
-          <label class="form-label" for="rollNumber">
-            Roll Number <span style="color: var(--danger);">*</span>
-          </label>
-          <input type="text" id="rollNumber" class="form-input form-input-lg" 
-                 placeholder="Enter student roll number"
-                 autocomplete="off" autofocus>
+          <label class="form-label" for="rollNumber">Roll Number *</label>
+          <input type="number" id="rollNumber" class="form-input" inputmode="numeric" pattern="[0-9]*" 
+                 placeholder="Enter numeric roll number" autocomplete="off" autofocus
+                 onkeypress="return event.charCode >= 48 && event.charCode <= 57">
         </div>
-        
         <div class="form-group">
-          <label class="form-label" for="classSelect">
-            Select Class <span style="color: var(--danger);">*</span>
-          </label>
-          <select id="classSelect" class="form-select">
-            <option value="">-- Select Class --</option>
-          </select>
+          <label class="form-label" for="classSelect">Select Class *</label>
+          <select id="classSelect" class="form-select"><option value="">-- Select Class --</option></select>
         </div>
-
-        <div id="already-voted-message" style="display: none; background: #fef3c7; padding: 12px; border-radius: var(--radius-md); margin-bottom: var(--spacing-md);">
-          ⚠️ This voter has already cast their vote.
-        </div>
-
-        <button id="proceed-btn" class="btn btn-primary btn-block btn-lg">
-          Proceed to Vote →
-        </button>
-
-        <div style="margin-top: var(--spacing-xl); padding-top: var(--spacing-lg); border-top: 2px solid var(--border-color);">
-          <button id="end-poll-btn" class="btn btn-outline btn-block" style="color: var(--danger); border-color: var(--danger);">
-            ⛔ End Poll (Officer Only)
-          </button>
-          <p style="text-align: center; font-size: 0.75rem; color: var(--text-secondary); margin-top: var(--spacing-sm);">
-            Requires master password
-          </p>
+        <div id="already-voted-message" style="display:none; background:#fef3c7; padding:12px; border-radius:var(--radius-lg); margin-bottom:var(--spacing-md);">⚠️ Already voted.</div>
+        <button id="proceed-btn" class="btn btn-primary btn-block btn-lg">Proceed to Vote →</button>
+        <div style="margin-top:var(--spacing-xl); padding-top:var(--spacing-lg); border-top:2px solid var(--border-color);">
+          <button id="end-poll-btn" class="btn btn-outline btn-block" style="color:var(--danger); border-color:var(--danger);">⛔ End Poll (Officer Only)</button>
         </div>
       </div>
     </div>
 
-    <!-- Candidate Selection Modal -->
-    <div id="candidate-modal" class="modal-overlay">
-      <div class="modal-dialog" style="max-width: 500px;">
+    <!-- Candidate Selection Modal (shown directly if no registration) -->
+    <div id="candidate-modal" class="modal-overlay" style="display:none;">
+      <div class="modal-dialog" style="max-width:500px; max-height:85vh; overflow-y:auto;">
         <div class="modal-header">
           <div>
-            <h2 id="post-title-display"></h2>
-            <small style="color: var(--text-secondary);">
-              Voter: <strong id="voter-info-display"></strong>
-            </small>
+            <h2 id="post-title-display" style="font-size:1.25rem;"></h2>
+            <small id="voter-info-display" style="color:var(--text-secondary);"></small>
           </div>
           <button class="modal-close" onclick="backToInitial()">✕</button>
         </div>
-
         <div id="candidates-list"></div>
-
-        <div style="display: flex; gap: var(--spacing-md); margin-top: var(--spacing-lg);">
-          <button class="btn btn-outline" onclick="backToInitial()" style="flex: 1;">
-            ← Back
-          </button>
+        <div style="display:flex; gap:var(--spacing-md); margin-top:var(--spacing-lg);">
+          <button class="btn btn-outline" onclick="backToInitial()" style="flex:1;">← Back</button>
+          <button id="end-poll-candidate-btn" class="btn btn-outline" style="color:var(--danger); border-color:var(--danger); flex:1;">⛔ End Poll</button>
         </div>
       </div>
     </div>
 
-    <!-- Vote Confirmation Modal -->
+    <!-- Confirmation Modal -->
     <div id="confirm-modal" class="modal-overlay">
-      <div class="modal-dialog">
-        <div style="text-align: center;">
-          <div style="font-size: 4rem; margin-bottom: var(--spacing-md);">🤔</div>
-          <h2>Confirm Your Vote</h2>
-          <p id="confirm-voter-text" style="color: var(--text-secondary); margin-bottom: var(--spacing-lg);"></p>
-          
-          <div id="selected-candidate-preview" style="margin-bottom: var(--spacing-lg);"></div>
-          
-          <div style="display: flex; gap: var(--spacing-md);">
-            <button class="btn btn-outline" onclick="cancelVote()" style="flex: 1;">
-              Cancel
-            </button>
-            <button class="btn btn-success btn-lg" id="confirm-vote-btn" style="flex: 2;">
-              ✅ Confirm Vote
-            </button>
+      <div class="modal-dialog" style="max-width:420px;">
+        <div style="text-align:center;">
+          <div style="font-size:3.5rem; margin-bottom:var(--spacing-sm);">🤔</div>
+          <h2 style="font-size:1.5rem;">Confirm Your Vote</h2>
+          <p id="confirm-voter-text" style="color:var(--text-secondary);"></p>
+          <div id="selected-candidate-preview" style="margin:var(--spacing-lg) 0; padding:var(--spacing-lg); background:var(--bg-tertiary); border-radius:var(--radius-xl);">
+            <div style="display:flex; align-items:center; gap:var(--spacing-md);">
+              <div style="width:80px; height:80px; border-radius:50%; overflow:hidden; flex-shrink:0; border:3px solid var(--primary-light);">
+                <img id="confirm-candidate-photo" src="" alt="" style="width:100%; height:100%; object-fit:cover;">
+              </div>
+              <div style="text-align:left;">
+                <strong id="confirm-candidate-name" style="font-size:1.125rem;"></strong>
+                <br><small id="confirm-candidate-class" style="color:var(--text-secondary);"></small>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex; gap:var(--spacing-md);">
+            <button class="btn btn-outline" onclick="cancelVote()" style="flex:1;">Cancel</button>
+            <button class="btn btn-success btn-lg" id="confirm-vote-btn" style="flex:2;">✅ Confirm Vote</button>
           </div>
         </div>
       </div>
@@ -110,17 +88,13 @@
 
     <!-- Success Modal -->
     <div id="success-modal" class="modal-overlay">
-      <div class="modal-dialog" style="text-align: center;">
-        <div style="font-size: 5rem; animation: bounceIn 0.5s ease;">✅</div>
-        <h2 style="color: var(--success);">Vote Cast Successfully!</h2>
-        <p style="color: var(--text-secondary);">Thank you for voting</p>
-        <div style="margin-top: var(--spacing-lg);">
-          <div class="progress-bar">
-            <div class="progress-fill" id="redirect-progress" style="width: 100%;"></div>
-          </div>
-          <p style="margin-top: var(--spacing-sm); font-size: 0.875rem; color: var(--text-secondary);">
-            Redirecting to next voter in <span id="countdown">3</span> seconds...
-          </p>
+      <div class="modal-dialog" style="text-align:center; max-width:380px;">
+        <div style="font-size:4rem; animation:bounceIn 0.5s ease;">✅</div>
+        <h2 style="color:var(--success);">Vote Cast Successfully!</h2>
+        <p style="color:var(--text-secondary);">Thank you for voting</p>
+        <div style="margin-top:var(--spacing-lg);">
+          <div class="progress-bar"><div class="progress-fill" id="redirect-progress" style="width:100%;"></div></div>
+          <p style="margin-top:var(--spacing-sm); font-size:0.875rem; color:var(--text-secondary);">Next voter in <span id="countdown">3</span>s</p>
         </div>
       </div>
     </div>
@@ -134,10 +108,9 @@
         </div>
         <div class="form-group">
           <label class="form-label">Master Password</label>
-          <input type="password" id="end-password" class="form-input" 
-                 placeholder="Enter master password">
+          <input type="password" id="end-password" class="form-input" placeholder="Enter master password">
         </div>
-        <div style="display: flex; gap: var(--spacing-md); justify-content: flex-end;">
+        <div style="display:flex; gap:var(--spacing-md); justify-content:flex-end;">
           <button class="btn btn-outline" onclick="closeModal('end-password-modal')">Cancel</button>
           <button class="btn btn-danger" id="confirm-end-btn">End Poll</button>
         </div>
@@ -155,210 +128,159 @@
     let currentPoll = null;
     let selectedCandidateId = null;
     let redirectTimer = null;
+    let registrationEnabled = false;
 
     async function init() {
       try {
         currentPoll = await db.getPoll(pollId);
-        
         if (!currentPoll || currentPoll.status !== 'active') {
-          document.body.innerHTML = `
-            <div class="app-container">
-              <div class="glass-panel" style="text-align: center;">
-                <div style="font-size: 5rem;">⚠️</div>
-                <h2>No Active Poll</h2>
-                <p style="color: var(--text-secondary);">The poll is either not found or not active.</p>
-                <a href="index.html" class="btn btn-primary">Return Home</a>
-              </div>
-            </div>
-          `;
+          document.body.innerHTML = `<div class="app-container"><div class="glass-panel" style="text-align:center;"><h2>No Active Poll</h2><a href="index.html" class="btn btn-primary">Home</a></div></div>`;
           return;
         }
-
-        // Populate class dropdown
-        const classSelect = document.getElementById('classSelect');
-        classSelect.innerHTML = '<option value="">-- Select Class --</option>' +
-          currentPoll.allowedClasses.map(c => `<option value="${c}">${c}</option>`).join('');
-
-        // Focus roll number input
-        document.getElementById('rollNumber').focus();
-
-        // Update status bar
+        registrationEnabled = currentPoll.enableRegistration || false;
         updateStatusBar();
 
-        // Keyboard navigation
+        if (registrationEnabled) {
+          // Populate class dropdown
+          const select = document.getElementById('classSelect');
+          select.innerHTML = '<option value="">-- Select Class --</option>' +
+            currentPoll.allowedClasses.map(c => `<option value="${c}">${c}</option>`).join('');
+          showModal('initial-modal');
+          document.getElementById('rollNumber').focus();
+        } else {
+          // Skip verification, show candidate modal directly
+          renderCandidates('', '');
+          showModal('candidate-modal');
+        }
+
         document.addEventListener('keydown', handleKeyboard);
-        
       } catch (error) {
-        console.error('Error initializing voting:', error);
-        notifications.error('Failed to load voting interface');
+        console.error(error);
+        notifications.error('Failed to load voting');
       }
     }
 
     function updateStatusBar() {
-      const votedCount = currentPoll.votedCombos.length;
-      const totalStudents = currentPoll.allowedClasses.length * 60; // Estimate
-      document.getElementById('status-bar').innerHTML = 
-        `🟢 Voting Active | ✅ ${votedCount} votes cast`;
+      const votedCount = currentPoll.votedCombos ? currentPoll.votedCombos.length : 0;
+      document.getElementById('vote-count-badge').textContent = `${votedCount} votes`;
     }
 
     function handleKeyboard(e) {
       if (e.key === 'Escape') {
-        if (document.getElementById('confirm-modal').classList.contains('active')) {
-          cancelVote();
-        } else if (document.getElementById('candidate-modal').classList.contains('active')) {
-          backToInitial();
-        }
+        if (document.getElementById('confirm-modal').classList.contains('active')) cancelVote();
+        else if (document.getElementById('candidate-modal').classList.contains('active') && registrationEnabled) backToInitial();
       }
     }
 
-    // Proceed to voting
-    document.getElementById('proceed-btn').addEventListener('click', async () => {
+    // Proceed button (only if registration enabled)
+    document.getElementById('proceed-btn')?.addEventListener('click', async () => {
+      if (!registrationEnabled) return;
       const rollNumber = document.getElementById('rollNumber').value.trim();
       const className = document.getElementById('classSelect').value;
-
-      if (!rollNumber) {
-        notifications.warning('Please enter roll number');
-        document.getElementById('rollNumber').focus();
-        return;
-      }
-
-      if (!className) {
-        notifications.warning('Please select class');
-        document.getElementById('classSelect').focus();
-        return;
-      }
-
-      const voterCombo = `${rollNumber}|${className}`;
-
-      // Check if already voted
-      if (currentPoll.votedCombos.includes(voterCombo)) {
+      if (!rollNumber) { notifications.warning('Enter roll number'); document.getElementById('rollNumber').focus(); return; }
+      if (!/^\d+$/.test(rollNumber)) { notifications.warning('Only numbers allowed'); document.getElementById('rollNumber').focus(); return; }
+      if (!className) { notifications.warning('Select class'); return; }
+      const combo = `${rollNumber}|${className}`;
+      if (currentPoll.votedCombos.includes(combo)) {
         document.getElementById('already-voted-message').style.display = 'block';
-        notifications.error('This voter has already cast their vote');
+        notifications.error('Already voted');
         Utils.playSound('error');
+        document.getElementById('rollNumber').value = '';
+        document.getElementById('rollNumber').focus();
+        setTimeout(() => document.getElementById('already-voted-message').style.display = 'none', 3000);
         return;
       }
-
       document.getElementById('already-voted-message').style.display = 'none';
-
-      // Show candidates
       renderCandidates(rollNumber, className);
-      
       closeModal('initial-modal');
       showModal('candidate-modal');
     });
 
     function renderCandidates(rollNumber, className) {
       document.getElementById('post-title-display').textContent = currentPoll.postName;
-      document.getElementById('voter-info-display').textContent = `${rollNumber} (${className})`;
-
-      const candidatesList = document.getElementById('candidates-list');
-      
-      candidatesList.innerHTML = currentPoll.candidates.map((candidate, index) => `
-        <div class="candidate-vote-card" 
-             onclick="selectCandidate('${candidate.id}', this)"
-             style="animation: slideUp 0.3s ease ${index * 0.1}s both;">
-          <img src="${candidate.photo}" class="candidate-photo" 
-               alt="${candidate.name}" loading="lazy">
-          <div class="candidate-details">
-            <h3>${candidate.name}</h3>
-            <p style="color: var(--text-secondary);">Class: ${candidate.class}</p>
+      const infoDisplay = document.getElementById('voter-info-display');
+      if (registrationEnabled && rollNumber) {
+        infoDisplay.textContent = `Voter: ${rollNumber} (${className})`;
+      } else {
+        infoDisplay.textContent = '';
+      }
+      const list = document.getElementById('candidates-list');
+      list.innerHTML = currentPoll.candidates.map((c, i) => `
+        <div class="candidate-vote-card" onclick="selectCandidate('${c.id}', this)" style="animation:slideUp 0.3s ease ${i*0.08}s both;">
+          <img src="${c.photo}" alt="${c.name}" style="width:70px;height:70px;border-radius:50%;object-fit:cover;border:3px solid var(--primary-light);">
+          <div style="flex:1;">
+            <h3 style="font-size:1.125rem;margin-bottom:2px;">${c.name}</h3>
+            <p style="color:var(--text-secondary);margin:0;">Class: ${c.class}</p>
           </div>
-          <div>
-            <button class="btn btn-primary" onclick="event.stopPropagation(); selectCandidate('${candidate.id}', this.closest('.candidate-vote-card'))">
-              Vote
-            </button>
-          </div>
+          <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); selectCandidate('${c.id}', this.closest('.candidate-vote-card'))">Vote</button>
         </div>
       `).join('');
     }
 
     function selectCandidate(candidateId, element) {
-      // Remove previous selections
-      document.querySelectorAll('.candidate-vote-card').forEach(card => {
-        card.classList.remove('selected');
-      });
-      
-      // Select current
+      document.querySelectorAll('.candidate-vote-card').forEach(card => card.classList.remove('selected'));
       element.classList.add('selected');
       selectedCandidateId = candidateId;
-      
       Utils.playSound('click');
-      
-      // Show confirmation
       const candidate = currentPoll.candidates.find(c => c.id === candidateId);
-      document.getElementById('confirm-voter-text').textContent = 
-        `Are you sure you want to vote for:`;
-      document.getElementById('selected-candidate-preview').innerHTML = `
-        <div style="display: flex; align-items: center; gap: var(--spacing-md); justify-content: center;">
-          <img src="${candidate.photo}" style="width: 60px; height: 60px; border-radius: 50%;">
-          <div>
-            <strong>${candidate.name}</strong><br>
-            <small>${candidate.class}</small>
-          </div>
-        </div>
-      `;
-      
+      if (!candidate) return;
+      document.getElementById('confirm-voter-text').textContent = `Are you sure you want to vote for:`;
+      document.getElementById('confirm-candidate-photo').src = candidate.photo;
+      document.getElementById('confirm-candidate-name').textContent = candidate.name;
+      document.getElementById('confirm-candidate-class').textContent = `Class: ${candidate.class}`;
       showModal('confirm-modal');
     }
 
     function cancelVote() {
       closeModal('confirm-modal');
       selectedCandidateId = null;
-      document.querySelectorAll('.candidate-vote-card').forEach(card => {
-        card.classList.remove('selected');
-      });
+      document.querySelectorAll('.candidate-vote-card').forEach(card => card.classList.remove('selected'));
     }
 
-    // Confirm vote
     document.getElementById('confirm-vote-btn').addEventListener('click', async () => {
       if (!selectedCandidateId) return;
-
-      const rollNumber = document.getElementById('rollNumber').value.trim();
-      const className = document.getElementById('classSelect').value;
-      const voterCombo = `${rollNumber}|${className}`;
+      const rollNumber = registrationEnabled ? document.getElementById('rollNumber').value.trim() : '';
+      const className = registrationEnabled ? document.getElementById('classSelect').value : '';
+      const voterCombo = registrationEnabled ? `${rollNumber}|${className}` : null;
 
       try {
-        // Update vote count in database
-        await db.updatePollVote(currentPoll.id, selectedCandidateId, voterCombo);
-        
-        // Refresh local poll data
-        currentPoll = await db.getPoll(pollId);
+        if (registrationEnabled && voterCombo) {
+          await db.updatePollVote(currentPoll.id, selectedCandidateId, voterCombo);
+        } else {
+          // Direct vote update without tracking
+          currentPoll = await db.getPoll(pollId);
+          const candidate = currentPoll.candidates.find(c => c.id === selectedCandidateId);
+          if (candidate) candidate.votes++;
+          await db.savePoll(currentPoll);
+        }
 
-        // Close all modals
+        currentPoll = await db.getPoll(pollId);
         closeModal('confirm-modal');
         closeModal('candidate-modal');
-        
-        // Show success
         showSuccessModal();
-        
-        // Update status bar
         updateStatusBar();
-        
         Utils.playSound('success');
-        
       } catch (error) {
-        console.error('Error casting vote:', error);
-        notifications.error('Failed to cast vote. Please try again.');
+        console.error(error);
+        notifications.error('Failed to cast vote');
       }
     });
 
     function showSuccessModal() {
       showModal('success-modal');
-      
       let countdown = 3;
-      const countdownElement = document.getElementById('countdown');
-      const progressBar = document.getElementById('redirect-progress');
-      
-      countdownElement.textContent = countdown;
-      progressBar.style.width = '100%';
-      
+      const countdownEl = document.getElementById('countdown');
+      const progress = document.getElementById('redirect-progress');
+      countdownEl.textContent = countdown;
+      progress.style.width = '100%';
+      if (redirectTimer) clearInterval(redirectTimer);
       redirectTimer = setInterval(() => {
         countdown--;
-        countdownElement.textContent = countdown;
-        progressBar.style.width = `${(countdown / 3) * 100}%`;
-        
+        countdownEl.textContent = countdown;
+        progress.style.width = `${(countdown/3)*100}%`;
         if (countdown <= 0) {
           clearInterval(redirectTimer);
+          redirectTimer = null;
           resetForNextVoter();
         }
       }, 1000);
@@ -366,88 +288,70 @@
 
     function resetForNextVoter() {
       closeModal('success-modal');
-      document.getElementById('rollNumber').value = '';
-      document.getElementById('classSelect').value = '';
-      selectedCandidateId = null;
-      document.getElementById('already-voted-message').style.display = 'none';
-      showModal('initial-modal');
-      document.getElementById('rollNumber').focus();
-      
+      if (registrationEnabled) {
+        document.getElementById('rollNumber').value = '';
+        document.getElementById('classSelect').value = '';
+        document.getElementById('already-voted-message').style.display = 'none';
+        showModal('initial-modal');
+        document.getElementById('rollNumber').focus();
+      } else {
+        // Go back to candidate list directly
+        renderCandidates('', '');
+        showModal('candidate-modal');
+      }
       notifications.info('Ready for next voter');
     }
 
     function backToInitial() {
-      closeModal('candidate-modal');
-      showModal('initial-modal');
-      document.getElementById('rollNumber').focus();
+      if (registrationEnabled) {
+        closeModal('candidate-modal');
+        showModal('initial-modal');
+        document.getElementById('rollNumber').focus();
+      } else {
+        // If no registration, "back" could go to candidate modal again (or do nothing)
+      }
     }
 
-    // End poll functionality
-    document.getElementById('end-poll-btn').addEventListener('click', () => {
+    // End poll from any screen
+    document.getElementById('end-poll-btn')?.addEventListener('click', () => openEndPasswordModal());
+    document.getElementById('end-poll-candidate-btn')?.addEventListener('click', () => openEndPasswordModal());
+
+    function openEndPasswordModal() {
       showModal('end-password-modal');
       document.getElementById('end-password').focus();
-    });
+    }
 
     document.getElementById('confirm-end-btn').addEventListener('click', async () => {
       const password = document.getElementById('end-password').value;
-      
-      if (!password) {
-        notifications.warning('Please enter password');
-        return;
-      }
-
-      try {
-        const isValid = await cryptoManager.verifyPassword(password, currentPoll.masterPasswordHash);
-        
-        if (!isValid) {
-          notifications.error('Incorrect password');
-          return;
-        }
-
-        currentPoll.status = 'ended';
-        currentPoll.endedAt = Date.now();
-        await db.savePoll(currentPoll);
-        
-        notifications.success('Poll ended successfully');
-        Utils.playSound('success');
-        
-        setTimeout(() => {
-          window.location.href = 'index.html';
-        }, 1000);
-        
-      } catch (error) {
-        console.error('Error ending poll:', error);
-        notifications.error('Failed to end poll');
-      }
+      if (!password) { notifications.warning('Enter password'); return; }
+      const valid = await cryptoManager.verifyPassword(password, currentPoll.masterPasswordHash);
+      if (!valid) { notifications.error('Wrong password'); return; }
+      currentPoll.status = 'ended';
+      currentPoll.endedAt = Date.now();
+      await db.savePoll(currentPoll);
+      notifications.success('Poll ended');
+      Utils.playSound('success');
+      setTimeout(() => { window.location.href = 'index.html'; }, 800);
     });
 
-    function showModal(id) {
-      document.getElementById(id).classList.add('active');
-    }
+    function showModal(id) { document.getElementById(id).classList.add('active'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
 
-    function closeModal(id) {
-      document.getElementById(id).classList.remove('active');
-    }
+    window.addEventListener('beforeunload', () => { if (redirectTimer) clearInterval(redirectTimer); });
 
-    // Cleanup on page unload
-    window.addEventListener('beforeunload', () => {
-      if (redirectTimer) {
-        clearInterval(redirectTimer);
-      }
-    });
-
-    // Close modals on overlay click
     document.querySelectorAll('.modal-overlay').forEach(overlay => {
       overlay.addEventListener('click', (e) => {
-        if (e.target === overlay && overlay.id !== 'initial-modal') {
+        if (e.target === overlay && overlay.id !== 'initial-modal' && overlay.id !== 'candidate-modal') {
           closeModal(overlay.id);
         }
       });
     });
 
-    // Initialize
+    document.getElementById('end-password')?.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') document.getElementById('confirm-end-btn').click();
+    });
+
     init();
   </script>
 </body>
 </html>
-  

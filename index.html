@@ -9,6 +9,41 @@
   <link rel="stylesheet" href="styles.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    .poll-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+    
+    .delete-btn {
+      background: transparent;
+      border: 1px solid var(--danger);
+      color: var(--danger);
+      padding: 6px 14px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      transition: all 0.2s ease;
+    }
+    
+    .delete-btn:hover {
+      background: var(--danger);
+      color: white;
+    }
+    
+    .delete-confirm-modal .modal-dialog {
+      max-width: 380px;
+      text-align: center;
+    }
+    
+    .delete-icon {
+      font-size: 3rem;
+      margin-bottom: 12px;
+    }
+  </style>
 </head>
 <body>
   <div class="app-container">
@@ -19,23 +54,18 @@
       </h1>
       <p style="color: var(--text-secondary);">Secure • Offline • Reliable</p>
       
-      <div style="margin-top: var(--spacing-lg); display: flex; gap: var(--spacing-md); justify-content: center; flex-wrap: wrap;">
+      <div style="margin-top: var(--spacing-lg);">
         <a href="create.html" class="btn btn-primary btn-lg">
           <span>➕</span> Create New Poll
         </a>
-        <button onclick="window.print()" class="btn btn-outline">
-          <span>🖨️</span> Print
-        </button>
       </div>
     </header>
 
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-lg);">
-      <h2 style="margin: 0;">Active Polls</h2>
-      <div>
-        <button onclick="refreshPolls()" class="btn btn-sm btn-outline" title="Refresh">
-          🔄
-        </button>
-      </div>
+      <h2 style="margin: 0;">Polls</h2>
+      <button onclick="refreshPolls()" class="btn btn-sm btn-outline" title="Refresh">
+        🔄
+      </button>
     </div>
 
     <div id="polls-container">
@@ -94,6 +124,22 @@
     </div>
   </div>
 
+  <!-- Delete Confirmation Modal -->
+  <div id="delete-confirm-modal" class="modal-overlay delete-confirm-modal">
+    <div class="modal-dialog">
+      <div class="delete-icon">🗑️</div>
+      <h3>Delete Poll?</h3>
+      <p style="color: var(--text-secondary); margin-bottom: 8px;" id="delete-poll-name"></p>
+      <p style="color: var(--danger); font-size: 0.875rem; font-weight: 600;">
+        ⚠️ This action cannot be undone!
+      </p>
+      <div style="display: flex; gap: var(--spacing-md); justify-content: center; margin-top: var(--spacing-lg);">
+        <button class="btn btn-outline" onclick="closeModal('delete-confirm-modal')">Cancel</button>
+        <button class="btn btn-danger" id="confirm-delete-btn">Delete Permanently</button>
+      </div>
+    </div>
+  </div>
+
   <script src="db.js"></script>
   <script src="crypto.js"></script>
   <script src="utils.js"></script>
@@ -101,6 +147,7 @@
   <script src="theme.js"></script>
   <script>
     let currentAction = null;
+    let pollToDelete = null;
 
     async function loadPolls() {
       try {
@@ -142,6 +189,9 @@
               <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); openActionModal('${poll.id}', 'start')">
                 ▶️ Start Poll
               </button>
+              <button class="delete-btn" onclick="event.stopPropagation(); confirmDelete('${poll.id}')">
+                🗑️ Delete
+              </button>
             `;
           } else if (poll.status === 'active') {
             actionButtons = `
@@ -154,6 +204,9 @@
               <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); openResults('${poll.id}')">
                 📊 View Results
               </button>
+              <button class="delete-btn" onclick="event.stopPropagation(); confirmDelete('${poll.id}')">
+                🗑️ Delete
+              </button>
             `;
           }
 
@@ -161,18 +214,22 @@
             <div class="card" onclick="handleCardClick('${poll.id}')" style="cursor: pointer;">
               <div class="card-header">
                 <div>
-                  <h3 style="margin: 0;">${escapeHtml(poll.postName)}</h3>
-                  ${statusBadge}
+                  <h3 style="margin: 0;">${escapeHtml(poll.electionName || poll.postName)}</h3>
+                  <small style="color: var(--text-secondary);">${escapeHtml(poll.institution || '')}</small>
+                  <div style="margin-top: 4px;">
+                    ${statusBadge}
+                  </div>
                 </div>
                 <div style="font-size: 0.875rem; color: var(--text-secondary);">
                   ${Utils.formatDate(poll.createdAt)}
                 </div>
               </div>
               <div style="margin-bottom: var(--spacing-md); color: var(--text-secondary);">
-                <span>👥 ${candidateCount} Candidates</span>
+                <span>📋 ${escapeHtml(poll.postName)}</span>
+                <span style="margin-left: var(--spacing-lg);">👥 ${candidateCount} Candidates</span>
                 <span style="margin-left: var(--spacing-lg);">✅ ${voterCount} Votes</span>
               </div>
-              <div style="display: flex; gap: var(--spacing-sm); flex-wrap: wrap;">
+              <div class="poll-actions">
                 ${actionButtons}
               </div>
             </div>
@@ -185,7 +242,14 @@
     }
 
     function handleCardClick(pollId) {
-      // Could expand card or show quick actions
+      // Navigate based on status
+      db.getPoll(pollId).then(poll => {
+        if (poll.status === 'active') {
+          openVoting(pollId);
+        } else if (poll.status === 'ended') {
+          openResults(pollId);
+        }
+      });
     }
 
     function openVoting(pollId) {
@@ -203,11 +267,34 @@
         actionType === 'start' ? '🔐 Start Poll' : '🔐 View Results';
       showModal('password-modal');
       
-      // Focus on password input
       setTimeout(() => {
         document.getElementById('master-password').focus();
       }, 100);
     }
+
+    // Delete functionality
+    async function confirmDelete(pollId) {
+      pollToDelete = pollId;
+      const poll = await db.getPoll(pollId);
+      document.getElementById('delete-poll-name').textContent = 
+        `${poll.electionName || poll.postName} - ${poll.postName}`;
+      showModal('delete-confirm-modal');
+    }
+
+    document.getElementById('confirm-delete-btn').addEventListener('click', async () => {
+      if (!pollToDelete) return;
+      
+      try {
+        await db.deletePoll(pollToDelete);
+        closeModal('delete-confirm-modal');
+        notifications.success('Poll deleted successfully');
+        pollToDelete = null;
+        await loadPolls();
+      } catch (error) {
+        console.error('Error deleting poll:', error);
+        notifications.error('Failed to delete poll');
+      }
+    });
 
     async function confirmAction() {
       const password = document.getElementById('master-password').value;
@@ -254,7 +341,7 @@
       const activePoll = allPolls.find(p => p.status === 'active' && p.id !== poll.id);
       
       if (activePoll) {
-        notifications.warning(`Another poll "${activePoll.postName}" is already active. End it first.`);
+        notifications.warning(`Another poll "${activePoll.electionName || activePoll.postName}" is already active. End it first.`);
         return;
       }
 
@@ -262,7 +349,7 @@
       poll.startedAt = Date.now();
       await db.savePoll(poll);
       
-      notifications.success(`Poll "${poll.postName}" started successfully!`);
+      notifications.success(`Poll "${poll.electionName || poll.postName}" started successfully!`);
       Utils.playSound('success');
       
       await loadPolls();
@@ -284,24 +371,26 @@
 
     function escapeHtml(text) {
       const div = document.createElement('div');
-      div.textContent = text;
+      div.textContent = text || '';
       return div.innerHTML;
     }
 
-    // Close modal on overlay click
-    document.getElementById('password-modal').addEventListener('click', (e) => {
-      if (e.target === e.currentTarget) {
-        closeModal('password-modal');
-      }
+    // Close modals on overlay click
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+      overlay.addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) {
+          closeModal(overlay.id);
+        }
+      });
     });
 
-    // Confirm button
     document.getElementById('confirm-password-btn').addEventListener('click', confirmAction);
 
     // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         closeModal('password-modal');
+        closeModal('delete-confirm-modal');
       }
     });
 

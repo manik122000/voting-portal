@@ -5,151 +5,131 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#6366f1">
   <title>Create Poll - Election Portal</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="css/styles.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    .class-input-group {
-      display: flex;
-      gap: var(--spacing-sm);
-      align-items: center;
-    }
-    .class-input-group input {
+    /* Wider class input and tag area */
+    #newClass {
       flex: 1;
-      min-width: 200px;
+      min-width: 0;
     }
-    .toggle-container {
-      display: flex;
-      align-items: center;
-      gap: var(--spacing-sm);
-      margin: var(--spacing-md) 0;
+    #classes-tags {
+      gap: 6px;
     }
-    .toggle-switch {
-      position: relative;
-      width: 50px;
-      height: 28px;
-      background: var(--gray-300);
-      border-radius: 14px;
-      cursor: pointer;
-      transition: background var(--transition-fast);
-    }
-    .toggle-switch.active {
-      background: var(--primary);
-    }
-    .toggle-switch::after {
-      content: '';
-      position: absolute;
-      width: 24px;
-      height: 24px;
-      background: white;
-      border-radius: 50%;
-      top: 2px;
-      left: 2px;
-      transition: transform var(--transition-fast);
-    }
-    .toggle-switch.active::after {
-      transform: translateX(22px);
+    .class-tag {
+      white-space: nowrap;
     }
   </style>
 </head>
 <body>
   <div class="app-container">
     <header style="display: flex; align-items: center; gap: var(--spacing-md); margin-bottom: var(--spacing-xl);">
-      <a href="index.html" class="btn btn-outline btn-icon">←</a>
+      <a href="index.html" class="btn btn-outline btn-icon" title="Back">←</a>
       <h1 style="margin: 0;">Create New Poll</h1>
     </header>
 
     <form id="create-poll-form" class="glass-panel" autocomplete="off">
       <!-- Post Name -->
       <div class="form-group">
-        <label class="form-label" for="postName">Post Name *</label>
-        <input type="text" id="postName" class="form-input" placeholder="e.g., School Captain" required maxlength="100">
+        <label class="form-label" for="postName">
+          Post Name <span style="color: var(--danger);">*</span>
+        </label>
+        <input type="text" id="postName" class="form-input" 
+               placeholder="e.g., School Captain, Class Representative"
+               required maxlength="100">
+        <span class="form-hint">The position for which election is being held</span>
       </div>
 
-      <!-- Voter Registration Toggle -->
-      <div class="form-group">
-        <label class="form-label">Voter Registration</label>
-        <div class="toggle-container">
-          <div id="registration-toggle" class="toggle-switch" onclick="toggleRegistration()"></div>
-          <span id="registration-label">Disabled</span>
-        </div>
-        <span class="form-hint">If enabled, voters must enter roll number and class before voting</span>
+      <!-- Registration Toggle -->
+      <div class="form-group" style="background: var(--bg-tertiary); border-radius: var(--radius-lg); padding: var(--spacing-md);">
+        <label class="form-label" style="display: flex; align-items: center; gap: var(--spacing-sm); cursor: pointer;">
+          <input type="checkbox" id="registrationToggle" checked onchange="toggleRegistration()" style="width:20px; height:20px;">
+          <span>Require student registration (Roll No. + Class)</span>
+        </label>
+        <span class="form-hint" style="margin-left: 28px;">If disabled, anyone can vote without identification (no double‑vote prevention).</span>
       </div>
 
-      <!-- Allowed Classes (only if registration enabled) -->
-      <div id="classes-section" style="display: none;">
+      <!-- Allowed Classes (visible only if registration is on) -->
+      <div id="classes-section">
         <div class="form-group">
-          <label class="form-label" for="newClass">Allowed Voter Classes *</label>
-          <div class="class-input-group">
-            <input type="text" id="newClass" class="form-input" placeholder="e.g., 10A, 10B" style="flex:1;">
-            <button type="button" class="btn btn-outline" onclick="addClass()">Add</button>
+          <label class="form-label">
+            Allowed Voter Classes <span style="color: var(--danger);">*</span>
+          </label>
+          <div style="display: flex; gap: var(--spacing-sm); align-items: center;">
+            <input type="text" id="newClass" class="form-input" 
+                   placeholder="Add class (e.g., 10A)" style="flex:1;">
+            <button type="button" class="btn btn-outline" onclick="addClass()" style="white-space: nowrap;">Add</button>
           </div>
-          <div id="classes-tags" style="display: flex; flex-wrap: wrap; gap: var(--spacing-sm); margin-top: var(--spacing-sm);"></div>
-          <input type="hidden" id="allowedClasses">
-          <span class="form-hint">At least one class is required when registration is enabled</span>
+          <div id="classes-tags" style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: var(--spacing-sm);"></div>
+          <input type="hidden" id="allowedClasses" required>
+          <span class="form-hint">At least one class is required if registration is enabled.</span>
         </div>
       </div>
 
       <!-- Candidates Section -->
       <div style="margin: var(--spacing-xl) 0;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
-          <h3 style="margin:0;">Candidates</h3>
+          <h3 style="margin: 0;">Candidates</h3>
           <span class="badge badge-active" id="candidate-count">2/10</span>
         </div>
-        <p style="color: var(--text-secondary); font-size: 0.875rem;">Min 2, max 10 candidates</p>
+        <p style="color: var(--text-secondary); font-size: 0.875rem;">
+          Minimum 2, maximum 10 candidates
+        </p>
       </div>
 
       <div id="candidates-container"></div>
 
-      <button type="button" id="add-candidate-btn" class="btn btn-outline btn-block" style="margin-bottom: var(--spacing-xl);">➕ Add Candidate</button>
+      <button type="button" id="add-candidate-btn" class="btn btn-outline btn-block" style="margin-bottom: var(--spacing-xl);">
+        ➕ Add Candidate
+      </button>
 
-      <!-- Password -->
+      <!-- Password Section -->
       <div style="border-top: 2px solid var(--border-color); padding-top: var(--spacing-xl);">
         <h3>🔐 Security</h3>
         <div class="form-group">
-          <label class="form-label" for="masterPassword">Master Password *</label>
-          <input type="password" id="masterPassword" class="form-input" placeholder="Create a strong password" required minlength="4">
+          <label class="form-label" for="masterPassword">
+            Master Password <span style="color: var(--danger);">*</span>
+          </label>
+          <input type="password" id="masterPassword" class="form-input" 
+                 placeholder="Create a strong password" required minlength="4">
         </div>
         <div class="form-group">
-          <label class="form-label" for="confirmPassword">Confirm Password *</label>
-          <input type="password" id="confirmPassword" class="form-input" placeholder="Re-enter password" required>
-          <span class="form-hint" id="password-match" style="display:none;"></span>
+          <label class="form-label" for="confirmPassword">
+            Confirm Password <span style="color: var(--danger);">*</span>
+          </label>
+          <input type="password" id="confirmPassword" class="form-input" 
+                 placeholder="Re-enter password" required>
+          <span class="form-hint" id="password-match" style="display: none;"></span>
         </div>
       </div>
 
+      <!-- Action Buttons -->
       <div style="display: flex; gap: var(--spacing-md); margin-top: var(--spacing-xl);">
-        <a href="index.html" class="btn btn-outline" style="flex:1;">Cancel</a>
-        <button type="submit" class="btn btn-primary btn-lg" style="flex:2;">🗳️ Create Poll</button>
+        <a href="index.html" class="btn btn-outline" style="flex: 1;">Cancel</a>
+        <button type="submit" class="btn btn-primary btn-lg" style="flex: 2;">
+          🗳️ Create Poll
+        </button>
       </div>
     </form>
   </div>
 
-  <script src="db.js"></script>
-  <script src="crypto.js"></script>
-  <script src="utils.js"></script>
-  <script src="notifications.js"></script>
-  <script src="theme.js"></script>
+  <script src="js/db.js"></script>
+  <script src="js/crypto.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/notifications.js"></script>
+  <script src="js/theme.js"></script>
   <script>
     let candidateCount = 0;
     let classList = [];
-    let registrationEnabled = false;
     const MAX_CANDIDATES = 10;
     const MIN_CANDIDATES = 2;
 
     function toggleRegistration() {
-      registrationEnabled = !registrationEnabled;
-      const toggle = document.getElementById('registration-toggle');
-      const label = document.getElementById('registration-label');
+      const checked = document.getElementById('registrationToggle').checked;
       const section = document.getElementById('classes-section');
-      if (registrationEnabled) {
-        toggle.classList.add('active');
-        label.textContent = 'Enabled';
-        section.style.display = 'block';
-      } else {
-        toggle.classList.remove('active');
-        label.textContent = 'Disabled';
-        section.style.display = 'none';
-        // Clear classes if disabled
+      section.style.display = checked ? 'block' : 'none';
+      if (!checked) {
         classList = [];
         renderClassTags();
       }
@@ -157,9 +137,15 @@
 
     function addClass() {
       const input = document.getElementById('newClass');
-      const className = input.value.trim().toUpperCase();
-      if (!className) { notifications.warning('Enter class name'); return; }
-      if (classList.includes(className)) { notifications.warning('Already exists'); return; }
+      const className = input.value.trim();
+      if (!className) {
+        notifications.warning('Please enter a class name');
+        return;
+      }
+      if (classList.includes(className)) {
+        notifications.warning('This class already exists');
+        return;
+      }
       classList.push(className);
       input.value = '';
       renderClassTags();
@@ -174,16 +160,24 @@
     function renderClassTags() {
       const container = document.getElementById('classes-tags');
       container.innerHTML = classList.map(c => `
-        <span style="display:inline-flex; align-items:center; gap:4px; background:var(--primary); color:white; padding:4px 12px; border-radius:var(--radius-full); font-size:0.875rem;">
+        <span class="class-tag" style="display: inline-flex; align-items: center; gap: 4px; 
+                     background: var(--primary); color: white; padding: 6px 12px; 
+                     border-radius: var(--radius-full); font-size: 0.875rem;">
           ${c}
-          <button type="button" onclick="removeClass('${c}')" style="background:none; border:none; color:white; cursor:pointer; padding:0;">✕</button>
+          <button type="button" onclick="removeClass('${c}')" 
+                  style="background: none; border: none; color: white; cursor: pointer; padding: 0; font-size:1rem;">
+            ✕
+          </button>
         </span>
       `).join('');
       document.getElementById('allowedClasses').value = classList.join(',');
     }
 
     function addCandidate() {
-      if (candidateCount >= MAX_CANDIDATES) { notifications.warning(`Max ${MAX_CANDIDATES}`); return; }
+      if (candidateCount >= MAX_CANDIDATES) {
+        notifications.warning(`Maximum ${MAX_CANDIDATES} candidates allowed`);
+        return;
+      }
       candidateCount++;
       const container = document.getElementById('candidates-container');
       const candidateId = Utils.generateId();
@@ -194,19 +188,23 @@
       card.innerHTML = `
         <div class="card-header">
           <h4>Candidate #${candidateCount}</h4>
-          <button type="button" class="btn btn-danger btn-sm" onclick="removeCandidate('${candidateId}')">🗑️ Remove</button>
+          <button type="button" class="btn btn-danger btn-sm" 
+                  onclick="removeCandidate('${candidateId}')">🗑️ Remove</button>
         </div>
         <div class="form-group">
           <label class="form-label">Name *</label>
-          <input type="text" class="form-input candidate-name" placeholder="Full name" required maxlength="50">
+          <input type="text" class="form-input candidate-name" 
+                 placeholder="Enter full name" required maxlength="50">
         </div>
         <div class="form-group">
           <label class="form-label">Class *</label>
-          <input type="text" class="form-input candidate-class" placeholder="e.g., 10A" required maxlength="10">
+          <input type="text" class="form-input candidate-class" 
+                 placeholder="e.g., 10A" required maxlength="10">
         </div>
         <div class="form-group">
           <label class="form-label">Photo *</label>
-          <input type="file" class="form-input candidate-photo-input" accept="image/*" required>
+          <input type="file" class="form-input candidate-photo-input" 
+                 accept="image/*" required>
           <div class="photo-preview" style="margin-top: var(--spacing-sm);"></div>
         </div>
       `;
@@ -216,8 +214,11 @@
         const file = e.target.files[0];
         if (file) {
           const reader = new FileReader();
-          reader.onload = (ev) => {
-            card.querySelector('.photo-preview').innerHTML = `<img src="${ev.target.result}" style="width:100px; height:100px; border-radius:50%; object-fit:cover; border:3px solid var(--primary-light);">`;
+          reader.onload = (event) => {
+            card.querySelector('.photo-preview').innerHTML = `
+              <img src="${event.target.result}" 
+                   style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid var(--primary-light);">
+            `;
           };
           reader.readAsDataURL(file);
         }
@@ -227,7 +228,10 @@
     }
 
     function removeCandidate(candidateId) {
-      if (candidateCount <= MIN_CANDIDATES) { notifications.warning(`Min ${MIN_CANDIDATES} candidates`); return; }
+      if (candidateCount <= MIN_CANDIDATES) {
+        notifications.warning(`Minimum ${MIN_CANDIDATES} candidates required`);
+        return;
+      }
       const card = document.getElementById(`candidate-${candidateId}`);
       if (card) {
         card.style.animation = 'fadeOut 0.3s ease';
@@ -241,8 +245,9 @@
     }
 
     function renumberCandidates() {
-      document.querySelectorAll('#candidates-container .card').forEach((card, i) => {
-        card.querySelector('h4').textContent = `Candidate #${i+1}`;
+      const cards = document.querySelectorAll('#candidates-container .card');
+      cards.forEach((card, index) => {
+        card.querySelector('h4').textContent = `Candidate #${index + 1}`;
       });
     }
 
@@ -251,11 +256,13 @@
       document.getElementById('add-candidate-btn').disabled = candidateCount >= MAX_CANDIDATES;
     }
 
+    // Live password matching
     document.getElementById('confirmPassword').addEventListener('input', function() {
-      const pw = document.getElementById('masterPassword').value;
+      const password = document.getElementById('masterPassword').value;
       const hint = document.getElementById('password-match');
-      if (this.value === '') hint.style.display = 'none';
-      else if (this.value === pw) {
+      if (this.value === '') {
+        hint.style.display = 'none';
+      } else if (this.value === password) {
         hint.style.display = 'block';
         hint.style.color = 'var(--success)';
         hint.textContent = '✓ Passwords match';
@@ -266,52 +273,75 @@
       }
     });
 
+    // Form submission
     document.getElementById('create-poll-form').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const postName = document.getElementById('postName').value.trim();
-      if (!postName) { notifications.error('Enter post name'); return; }
       
-      if (registrationEnabled && classList.length === 0) {
-        notifications.error('Add at least one class when registration is enabled');
+      const postName = document.getElementById('postName').value.trim();
+      if (!postName) {
+        notifications.error('Please enter post name');
         return;
       }
-
+      
+      const registrationRequired = document.getElementById('registrationToggle').checked;
+      
+      if (registrationRequired && classList.length === 0) {
+        notifications.error('Please add at least one class (or disable registration)');
+        return;
+      }
+      
       const candidateCards = document.querySelectorAll('#candidates-container .card');
-      if (candidateCards.length < MIN_CANDIDATES) { notifications.error(`Min ${MIN_CANDIDATES} candidates`); return; }
-
+      if (candidateCards.length < MIN_CANDIDATES) {
+        notifications.error(`Minimum ${MIN_CANDIDATES} candidates required`);
+        return;
+      }
+      
       const masterPassword = document.getElementById('masterPassword').value;
       const confirmPassword = document.getElementById('confirmPassword').value;
-      if (masterPassword.length < 4) { notifications.error('Password min 4 characters'); return; }
-      if (masterPassword !== confirmPassword) { notifications.error('Passwords do not match'); return; }
-
+      if (masterPassword.length < 4) {
+        notifications.error('Password must be at least 4 characters');
+        return;
+      }
+      if (masterPassword !== confirmPassword) {
+        notifications.error('Passwords do not match');
+        return;
+      }
+      
       const submitBtn = e.target.querySelector('button[type="submit"]');
       const originalText = submitBtn.textContent;
       submitBtn.textContent = 'Creating...';
       submitBtn.disabled = true;
-
+      
       try {
         const candidates = [];
         for (const card of candidateCards) {
           const name = card.querySelector('.candidate-name').value.trim();
-          const cls = card.querySelector('.candidate-class').value.trim();
+          const className = card.querySelector('.candidate-class').value.trim();
           const photoFile = card.querySelector('.candidate-photo-input').files[0];
-          if (!name || !cls || !photoFile) {
-            notifications.error('Fill all candidate fields');
+          if (!name || !className || !photoFile) {
+            notifications.error('All candidate fields are required');
             submitBtn.textContent = originalText;
             submitBtn.disabled = false;
             return;
           }
           const photoDataUrl = await Utils.compressImage(photoFile, 200, 200, 0.7);
-          candidates.push({ id: Utils.generateId(), name, class: cls, photo: photoDataUrl, votes: 0 });
+          candidates.push({
+            id: Utils.generateId(),
+            name,
+            class: className,
+            photo: photoDataUrl,
+            votes: 0
+          });
         }
-
+        
         const passwordHash = await cryptoManager.hashPassword(masterPassword);
+        
         const poll = {
           id: Utils.generateId(),
           postName,
           candidates,
-          allowedClasses: registrationEnabled ? classList : [],
-          enableRegistration: registrationEnabled,
+          allowedClasses: registrationRequired ? classList : [],
+          registrationRequired,
           masterPasswordHash: passwordHash,
           status: 'pending',
           votedCombos: [],
@@ -319,29 +349,32 @@
           startedAt: null,
           endedAt: null
         };
-
+        
         await db.savePoll(poll);
-        notifications.success('Poll created!');
+        notifications.success('Poll created successfully!');
         Utils.playSound('success');
-        setTimeout(() => { window.location.href = 'index.html'; }, 500);
+        
+        setTimeout(() => window.location.href = 'index.html', 500);
       } catch (error) {
-        console.error(error);
+        console.error('Error creating poll:', error);
         notifications.error('Failed to create poll');
         submitBtn.textContent = originalText;
         submitBtn.disabled = false;
       }
     });
 
+    // Enter key to add class
     document.getElementById('newClass').addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') { e.preventDefault(); addClass(); }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        addClass();
+      }
     });
 
-    // Init candidates
+    // Initialise
     addCandidate();
     addCandidate();
-
-    // Set initial toggle state
-    document.getElementById('registration-toggle').classList.remove('active');
+    toggleRegistration(); // show/hide accordingly
   </script>
 </body>
 </html>
